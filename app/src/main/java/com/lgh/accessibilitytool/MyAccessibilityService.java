@@ -51,28 +51,29 @@ import java.util.concurrent.TimeUnit;
 
 public class MyAccessibilityService extends AccessibilityService {
 
-//    static String TAG = "MyAccessibilityService";
+    //    static String TAG = "MyAccessibilityService";
     public static Handler handler;
     boolean double_press;
     boolean isrelease_up, isrelease_down, winchg_occur;
     long star_up, star_down;
-    int winstatus_count, create_num,connect_num;
+    int winstatus_count, create_num, connect_num;
     SharedPreferences sharedPreferences;
     ScheduledFuture future;
     ScheduledExecutorService executorService;
     AudioManager audioManager;
     Vibrator vibrator;
     ArrayList<String> pac_clk;
-    Set<String>  pac_msg;
+    Set<String> pac_msg;
     AccessibilityServiceInfo asi;
+
     @Override
     public void onCreate() {
         super.onCreate();
         try {
-            create_num=0;
-            connect_num=0;
+            create_num = 0;
+            connect_num = 0;
             create_num++;
-        }catch (Throwable e){
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -80,7 +81,7 @@ public class MyAccessibilityService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
-        if (++connect_num != create_num){
+        if (++connect_num != create_num) {
             throw null;
         }
         try {
@@ -90,11 +91,11 @@ public class MyAccessibilityService extends AccessibilityService {
             double_press = false;
             audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
             vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-            sharedPreferences=getSharedPreferences(getPackageName(),MODE_PRIVATE);
+            sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
             executorService = Executors.newSingleThreadScheduledExecutor();
             asi = getServiceInfo();
-            asi.eventTypes=sharedPreferences.getInt("eventTypes", AccessibilityEvent.TYPE_VIEW_CLICKED|AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
-            asi.flags=sharedPreferences.getInt("flags",asi.flags|AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) ;
+            asi.eventTypes = sharedPreferences.getInt("eventTypes", AccessibilityEvent.TYPE_VIEW_CLICKED | AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
+            asi.flags = sharedPreferences.getInt("flags", asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
             setServiceInfo(asi);
             pac_clk = new ArrayList<>();
             pac_clk.add("com.android.systemui");
@@ -102,19 +103,19 @@ public class MyAccessibilityService extends AccessibilityService {
             pac_clk.add("android");
             Intent intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
             ResolveInfo rsf = getPackageManager().resolveActivity(intent, 0);
-            pac_clk.add(rsf != null ? rsf.activityInfo.packageName : "");
-            pac_msg = sharedPreferences.getStringSet("pac_msg",new HashSet<String>());
+            if (rsf != null) pac_clk.add(rsf.activityInfo.packageName);
+            pac_msg = sharedPreferences.getStringSet("pac_msg", new HashSet<String>());
             handler = new Handler(new Handler.Callback() {
                 @Override
                 public boolean handleMessage(Message msg) {
                     switch (msg.what) {
                         case 0x00:
-                           final Set<String> pac_tem = new HashSet<>(pac_msg);
-                           final LayoutInflater inflater = LayoutInflater.from(getApplicationContext());
-                           View view_1= inflater.inflate(R.layout.floatlayout, null);
-                           final Switch switch_skip = view_1.findViewById(R.id.skip);
-                           final Switch switch_control = view_1.findViewById(R.id.control);
-                           final Switch switch_record = view_1.findViewById(R.id.record);
+                            final Set<String> pac_tem = new HashSet<>(pac_msg);
+                            final LayoutInflater inflater = LayoutInflater.from(getApplicationContext());
+                            View view_1 = inflater.inflate(R.layout.floatlayout, null);
+                            final Switch switch_skip = view_1.findViewById(R.id.skip);
+                            final Switch switch_control = view_1.findViewById(R.id.control);
+                            final Switch switch_record = view_1.findViewById(R.id.record);
                             switch_skip.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_VIEW_CLICKED) == AccessibilityEvent.TYPE_VIEW_CLICKED);
                             switch_control.setChecked((asi.flags & AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) == AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
                             switch_record.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
@@ -123,15 +124,15 @@ public class MyAccessibilityService extends AccessibilityService {
                                 public boolean onLongClick(View v) {
                                     View view_2 = inflater.inflate(R.layout.activity_select, null);
                                     ListView listView = view_2.findViewById(R.id.listview);
-                                   final PackageManager packageManager = getPackageManager();
-                                   final List<ApplicationInfo> list = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
+                                    final PackageManager packageManager = getPackageManager();
+                                    final List<ApplicationInfo> list = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
                                     ListIterator<ApplicationInfo> iterator = list.listIterator();
-                                    final  ArrayList<String> pac_name=new ArrayList<>();
-                                    final  ArrayList<String> pac_label=new ArrayList<>();
-                                    final  ArrayList<Drawable> drawables=new ArrayList<>();
+                                    final ArrayList<String> pac_name = new ArrayList<>();
+                                    final ArrayList<String> pac_label = new ArrayList<>();
+                                    final ArrayList<Drawable> drawables = new ArrayList<>();
                                     while (iterator.hasNext()) {
-                                        ApplicationInfo next=iterator.next();
-                                        if ((next.flags & ApplicationInfo.FLAG_SYSTEM) == ApplicationInfo.FLAG_SYSTEM){
+                                        ApplicationInfo next = iterator.next();
+                                        if ((next.flags & ApplicationInfo.FLAG_SYSTEM) == ApplicationInfo.FLAG_SYSTEM) {
                                             iterator.remove();
                                         } else {
                                             pac_name.add(next.packageName);
@@ -158,15 +159,15 @@ public class MyAccessibilityService extends AccessibilityService {
                                         @Override
                                         public View getView(int position, View convertView, ViewGroup parent) {
                                             ViewHolder holder;
-                                            if (convertView==null){
-                                                holder=new ViewHolder();
-                                                convertView= inflater.inflate(R.layout.view_list, null);
-                                                holder.textView=convertView.findViewById(R.id.name);
-                                                holder.imageView=convertView.findViewById(R.id.img);
-                                                holder.checkBox=convertView.findViewById(R.id.check);
+                                            if (convertView == null) {
+                                                holder = new ViewHolder();
+                                                convertView = inflater.inflate(R.layout.view_list, null);
+                                                holder.textView = convertView.findViewById(R.id.name);
+                                                holder.imageView = convertView.findViewById(R.id.img);
+                                                holder.checkBox = convertView.findViewById(R.id.check);
                                                 convertView.setTag(holder);
-                                            }else {
-                                                holder=(ViewHolder) convertView.getTag();
+                                            } else {
+                                                holder = (ViewHolder) convertView.getTag();
                                             }
                                             holder.textView.setText(pac_label.get(position));
                                             holder.imageView.setImageDrawable(drawables.get(position));
@@ -177,7 +178,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                     listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                                         @Override
                                         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                                           CheckBox c= ((ViewHolder) view.getTag()).checkBox;
+                                            CheckBox c = ((ViewHolder) view.getTag()).checkBox;
                                             if (c.isChecked()) {
                                                 pac_tem.remove(pac_name.get(position));
                                                 c.setChecked(false);
@@ -189,13 +190,14 @@ public class MyAccessibilityService extends AccessibilityService {
                                     });
                                     listView.setAdapter(baseAdapter);
                                     AlertDialog dialog_2 = new AlertDialog.Builder(MyAccessibilityService.this).setView(view_2).create();
-                                    Window win_2=dialog_2.getWindow();
+                                    Window win_2 = dialog_2.getWindow();
                                     win_2.setBackgroundDrawableResource(R.drawable.dialogbackground);
                                     win_2.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
                                     dialog_2.show();
                                     return true;
                                 }
-                                class ViewHolder{
+
+                                class ViewHolder {
                                     TextView textView;
                                     ImageView imageView;
                                     CheckBox checkBox;
@@ -240,7 +242,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                     startActivity(intent);
                                 }
                             }).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_1).create();
-                            Window win_1=dialog_1.getWindow();
+                            Window win_1 = dialog_1.getWindow();
                             win_1.setBackgroundDrawableResource(R.drawable.dialogbackground);
                             win_1.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
                             dialog_1.show();
@@ -260,7 +262,7 @@ public class MyAccessibilityService extends AccessibilityService {
             switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_VIEW_CLICKED:
                     if (pac_clk.contains(event.getPackageName().toString())) {
-                        asi.eventTypes |= (AccessibilityEvent.TYPE_WINDOWS_CHANGED|AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+                        asi.eventTypes |= (AccessibilityEvent.TYPE_WINDOWS_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
                         setServiceInfo(asi);
                     }
                     break;
@@ -286,7 +288,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         }
                         if (!list.isEmpty() || winstatus_count >= 8) {
                             winchg_occur = false;
-                            asi.eventTypes &= ~(AccessibilityEvent.TYPE_WINDOWS_CHANGED|AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+                            asi.eventTypes &= ~(AccessibilityEvent.TYPE_WINDOWS_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
                             setServiceInfo(asi);
                         }
                         winstatus_count++;
