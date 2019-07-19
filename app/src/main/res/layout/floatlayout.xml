@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:paddingStart="25dp"
+    android:paddingEnd="25dp"
+    android:paddingTop="10dp"
+    android:orientation="vertical">
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="1px"
+            android:src="@color/deviderline" />
+        <Switch
+            android:id="@+id/skip"
+            android:layout_height="match_parent"
+            android:layout_width="match_parent"
+            android:checked="true"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:layout_weight="1"
+            android:hint="跳过启动广告"
+            android:textColorHint="#ff000000" />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="1px"
+            android:src="@color/deviderline" />
+        <Switch
+            android:id="@+id/control"
+            android:layout_height="match_parent"
+            android:layout_width="match_parent"
+            android:checked="true"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:layout_weight="1"
+            android:hint="音量键切歌"
+            android:textColorHint="#ff000000" />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="1px"
+            android:src="@color/deviderline" />
+        <Switch
+            android:id="@+id/record"
+            android:layout_height="match_parent"
+            android:layout_width="match_parent"
+            android:checked="true"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:layout_weight="1"
+            android:hint="记录通知消息"
+            android:textColorHint="#ff000000" />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="1px"
+            android:src="@color/deviderline" />
+
+</LinearLayout>

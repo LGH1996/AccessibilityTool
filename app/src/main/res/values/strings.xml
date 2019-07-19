@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">AccessibilityTool</string>
+    <string name="description">
+        ①:使用音量键控制音乐播放、记录通知栏消息、自动跳过软件启动广告等功能的实现均基于此服务，唯有打开此服务软件才能正常使用。\n\n
+        ②:因为Android的未知BUG，此服务可能会出现异常，如遇到异常发生，请强行停止应用后重启打开。\n\n
+        ③:为了使无障碍服务能够稳定运行，请允许应用后台运行。\n\n
+        提示:打开开关时会收到系统例行风险提示,点击"确认"即可,本应用不会收集任何隐私数据。
+    </string>
+</resources>
