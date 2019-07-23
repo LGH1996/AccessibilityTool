@@ -24,7 +24,9 @@ import android.os.SystemClock;
 import android.os.Vibrator;
 import android.provider.Settings;
 import android.renderscript.ScriptC;
+import android.text.BoringLayout;
 import android.text.method.ScrollingMovementMethod;
+import android.util.DisplayMetrics;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -121,6 +123,11 @@ public class MyAccessibilityService extends AccessibilityService {
                 public boolean handleMessage(Message msg) {
                     switch (msg.what) {
                         case 0x00:
+                            WindowManager windowManager= (WindowManager) getSystemService(WINDOW_SERVICE);
+                            DisplayMetrics metrics=new DisplayMetrics();
+                            windowManager.getDefaultDisplay().getMetrics(metrics);
+                            final int width=(metrics.widthPixels/6)*5;
+                            final int height=metrics.heightPixels;
                             final Set<String> pac_tem = new HashSet<>(pac_msg);
                             final LayoutInflater inflater = LayoutInflater.from(getApplicationContext());
                             final View view_1 = inflater.inflate(R.layout.maindialog, null);
@@ -209,7 +216,11 @@ public class MyAccessibilityService extends AccessibilityService {
                                     Window win_2 = dialog_2.getWindow();
                                     win_2.setBackgroundDrawableResource(R.drawable.dialogbackground);
                                     win_2.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                                    WindowManager.LayoutParams params=win_2.getAttributes();
+                                    win_2.setDimAmount(0);
                                     dialog_2.show();
+                                    params.width=width;
+                                    win_2.setAttributes(params);
                                     return true;
                                 }
 
@@ -277,8 +288,13 @@ public class MyAccessibilityService extends AccessibilityService {
                                        Window win_3 = dialog_3.getWindow();
                                        win_3.setBackgroundDrawableResource(R.drawable.dialogbackground);
                                        win_3.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                                       dialog_1.dismiss();
+                                       WindowManager.LayoutParams params=win_3.getAttributes();
+                                       win_3.setDimAmount(0);
                                        dialog_3.show();
+                                       params.width=width;
+                                       params.height=(height/6)*5;
+                                       win_3.setAttributes(params);
+                                       dialog_1.dismiss();
                                    }catch (Throwable e){e.printStackTrace();}
 
                                 }
@@ -324,7 +340,11 @@ public class MyAccessibilityService extends AccessibilityService {
                             Window win_1 = dialog_1.getWindow();
                             win_1.setBackgroundDrawableResource(R.drawable.dialogbackground);
                             win_1.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                            WindowManager.LayoutParams params=win_1.getAttributes();
+                            win_1.setDimAmount(0);
                             dialog_1.show();
+                            params.width=width;
+                            win_1.setAttributes(params);
                     }
                     return true;
                 }
