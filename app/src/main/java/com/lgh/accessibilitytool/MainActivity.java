@@ -18,8 +18,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         try {
             Context context = getApplicationContext();
-            String str = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-            if (str != null && str.contains(MyAccessibilityService.class.getName()) && MyAccessibilityService.handler != null) {
+            if ( MyAccessibilityService.handler != null) {
                 if (Settings.canDrawOverlays(context)) {
                     MyAccessibilityService.handler.sendEmptyMessage(0x00);
                     Toast.makeText(context, "请确保允许应用后台运行", Toast.LENGTH_SHORT).show();

@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.Notification;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -22,7 +23,8 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.os.Vibrator;
 import android.provider.Settings;
-import android.util.Log;
+import android.renderscript.ScriptC;
+import android.text.method.ScrollingMovementMethod;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -34,15 +36,24 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.ScrollView;
+import android.widget.Scroller;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -112,17 +123,22 @@ public class MyAccessibilityService extends AccessibilityService {
                         case 0x00:
                             final Set<String> pac_tem = new HashSet<>(pac_msg);
                             final LayoutInflater inflater = LayoutInflater.from(getApplicationContext());
-                            View view_1 = inflater.inflate(R.layout.floatlayout, null);
+                            final View view_1 = inflater.inflate(R.layout.maindialog, null);
+                            final AlertDialog dialog_1 = new AlertDialog.Builder(MyAccessibilityService.this).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_1).create();
                             final Switch switch_skip = view_1.findViewById(R.id.skip);
                             final Switch switch_control = view_1.findViewById(R.id.control);
                             final Switch switch_record = view_1.findViewById(R.id.record);
+                            TextView bt_set=view_1.findViewById(R.id.set);
+                            TextView bt_look=view_1.findViewById(R.id.look);
+                            TextView bt_cancel=view_1.findViewById(R.id.cancel);
+                            TextView bt_sure=view_1.findViewById(R.id.sure);
                             switch_skip.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_VIEW_CLICKED) == AccessibilityEvent.TYPE_VIEW_CLICKED);
                             switch_control.setChecked((asi.flags & AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) == AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
                             switch_record.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
                             switch_record.setOnLongClickListener(new View.OnLongClickListener() {
                                 @Override
                                 public boolean onLongClick(View v) {
-                                    View view_2 = inflater.inflate(R.layout.activity_select, null);
+                                    View view_2 = inflater.inflate(R.layout.view_select, null);
                                     ListView listView = view_2.findViewById(R.id.listview);
                                     final PackageManager packageManager = getPackageManager();
                                     final List<ApplicationInfo> list = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
@@ -203,10 +219,79 @@ public class MyAccessibilityService extends AccessibilityService {
                                     CheckBox checkBox;
                                 }
                             });
-
-                            AlertDialog dialog_1 = new AlertDialog.Builder(MyAccessibilityService.this).setNegativeButton("取消", null).setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            bt_set.setOnClickListener(new View.OnClickListener() {
                                 @Override
-                                public void onClick(DialogInterface dialog, int which) {
+                                public void onClick(View v) {
+                                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                    startActivity(intent);
+                                    dialog_1.dismiss();
+                                }
+                            });
+                            bt_look.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                   try {
+                                       File file=new File(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt");
+                                       if (!file.exists()){
+                                           Toast.makeText(MyAccessibilityService.this,"当前文件记录为空",Toast.LENGTH_SHORT).show();
+                                           return;
+                                       }
+                                       final View view_3= inflater.inflate(R.layout.view_massage,null);
+                                       final AlertDialog dialog_3=new AlertDialog.Builder(MyAccessibilityService.this).setView(view_3).create();
+                                       final EditText textView = view_3.findViewById(R.id.editText);
+                                       TextView but_empty=view_3.findViewById(R.id.empty);
+                                       TextView but_cancel=view_3.findViewById(R.id.cancel);
+                                       TextView but_sure=view_3.findViewById(R.id.sure);
+                                       but_empty.setOnClickListener(new View.OnClickListener() {
+                                           @Override
+                                           public void onClick(View v) {
+                                               textView.setText("");
+                                           }
+                                       });
+                                       but_cancel.setOnClickListener(new View.OnClickListener() {
+                                           @Override
+                                           public void onClick(View v) {
+                                               dialog_3.dismiss();
+                                           }
+                                       });
+                                       but_sure.setOnClickListener(new View.OnClickListener() {
+                                           @Override
+                                           public void onClick(View v) {
+                                               try {
+                                                   FileWriter writer=new FileWriter(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt",false);
+                                                   writer.write(textView.getText().toString());
+                                                   writer.close();
+                                                   dialog_3.dismiss();
+                                               }catch (Throwable e){e.printStackTrace();}
+                                           }
+                                       });
+                                       Scanner scanner =new Scanner(file);
+                                       StringBuilder builder=new StringBuilder();
+                                       while (scanner.hasNextLine()){
+                                          builder.append(scanner.nextLine()+"\n");
+                                       }
+                                       scanner.close();
+                                       textView.setText(builder.toString());
+                                       textView.setSelection(builder.length());
+                                       Window win_3 = dialog_3.getWindow();
+                                       win_3.setBackgroundDrawableResource(R.drawable.dialogbackground);
+                                       win_3.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                                       dialog_1.dismiss();
+                                       dialog_3.show();
+                                   }catch (Throwable e){e.printStackTrace();}
+
+                                }
+                            });
+                            bt_cancel.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    dialog_1.dismiss();
+                                }
+                            });
+                            bt_sure.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
                                     if (switch_skip.isChecked()) {
                                         asi.eventTypes |= AccessibilityEvent.TYPE_VIEW_CLICKED;
                                         sharedPreferences.edit().putInt("eventTypes", asi.eventTypes | AccessibilityEvent.TYPE_VIEW_CLICKED).commit();
@@ -231,17 +316,11 @@ public class MyAccessibilityService extends AccessibilityService {
                                         sharedPreferences.edit().putInt("eventTypes", asi.eventTypes & (~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED)).commit();
                                     }
                                     setServiceInfo(asi);
-                                    pac_msg = pac_tem;
                                     sharedPreferences.edit().putStringSet("pac_msg", pac_tem).commit();
+                                    pac_msg = pac_tem;
+                                    dialog_1.dismiss();
                                 }
-                            }).setNeutralButton("设置", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
-                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                                    startActivity(intent);
-                                }
-                            }).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_1).create();
+                            });
                             Window win_1 = dialog_1.getWindow();
                             win_1.setBackgroundDrawableResource(R.drawable.dialogbackground);
                             win_1.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
@@ -299,7 +378,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         List<CharSequence> list_msg = event.getText();
                         StringBuilder builder = new StringBuilder();
                         for (CharSequence s : list_msg)
-                            builder.append("【" + s.toString().replaceAll("\\s", "") + "】");
+                            builder.append("[" + s.toString().replaceAll("\\s", "") + "]");
                         builder.append("\n");
                         FileWriter writer = new FileWriter(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt", true);
                         writer.append(builder.toString());
