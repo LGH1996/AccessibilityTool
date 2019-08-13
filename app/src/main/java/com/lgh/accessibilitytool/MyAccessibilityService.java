@@ -46,7 +46,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.io.File;
 import java.io.FileWriter;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -56,8 +55,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MyAccessibilityService extends AccessibilityService {
 
@@ -142,12 +139,10 @@ public class MyAccessibilityService extends AccessibilityService {
             for (ApplicationInfo e:packageInfoList){
                 if ((e.flags&ApplicationInfo.FLAG_SYSTEM)==ApplicationInfo.FLAG_SYSTEM) {
                     pac_system.add(e.packageName);
-                    Log.i(TAG, packageManager.getApplicationLabel(e).toString());
                 }
             }
             pac_system.addAll(pac_input);
             pac_system.removeAll(pac_home);
-            Log.i(TAG,pac_system.toString());
             if (control_lightness) screenLightness.showFloat();
             if (control_lock) screenLock.showLockFloat();
             handler = new Handler(new Handler.Callback() {
@@ -427,7 +422,7 @@ public class MyAccessibilityService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        Log.i(TAG,AccessibilityEvent.eventTypeToString(event.getEventType())+"|"+event.getPackageName()+"|"+event.getClassName()+"|"+win_state_count);
+//        Log.i(TAG,AccessibilityEvent.eventTypeToString(event.getEventType())+"|"+event.getPackageName()+"|"+event.getClassName()+"|"+win_state_count);
         try {
                switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
@@ -448,7 +443,6 @@ public class MyAccessibilityService extends AccessibilityService {
                                 asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                                 setServiceInfo(asi);
                                 is_state_change = false;
-                                Log.i(TAG,"Time out");
                             }
                         },5000,TimeUnit.MILLISECONDS);
                     }
@@ -619,7 +613,6 @@ public class MyAccessibilityService extends AccessibilityService {
             }
         }
         if (!list.isEmpty() || win_state_count >= 50) {
-            Log.i(TAG,win_state_count+"");
             asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
             setServiceInfo(asi);
             is_state_change = false;

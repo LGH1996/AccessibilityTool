@@ -7,13 +7,12 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.provider.Settings;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
-    static String TAG= "MainActivity";
 
+    static String TAG= "MainActivity";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
