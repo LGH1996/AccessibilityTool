@@ -14,6 +14,19 @@
         android:persistent="true"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.NoDisplay">
+        <receiver
+            android:name=".MyDeviceAdminReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:description="@string/app_name"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data android:name="android.app.device_admin"
+                android:resource="@xml/dcm_configure" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+
+        </receiver>
 
         <service
             android:name=".MyAccessibilityService"
@@ -35,10 +48,10 @@
             android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
     </application>
 
 </manifest>

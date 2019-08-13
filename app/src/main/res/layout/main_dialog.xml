@@ -12,7 +12,7 @@
             android:layout_height="1px"
             android:src="@color/deviderline" />
         <Switch
-            android:id="@+id/skip"
+            android:id="@+id/skip_advertising"
             android:layout_height="match_parent"
             android:layout_width="match_parent"
             android:checked="true"
@@ -26,21 +26,21 @@
             android:layout_height="1px"
             android:src="@color/deviderline" />
         <Switch
-            android:id="@+id/control"
+            android:id="@+id/volume_control"
             android:layout_height="match_parent"
             android:layout_width="match_parent"
             android:checked="true"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
             android:layout_weight="1"
-            android:hint="音量键切歌"
+            android:hint="音量键切音频"
             android:textColorHint="#ff000000" />
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="1px"
             android:src="@color/deviderline" />
         <Switch
-            android:id="@+id/record"
+            android:id="@+id/record_message"
             android:layout_height="match_parent"
             android:layout_width="match_parent"
             android:checked="true"
@@ -49,6 +49,34 @@
             android:layout_weight="1"
             android:hint="记录通知消息"
             android:textColorHint="#ff000000" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:src="@color/deviderline" />
+    <Switch
+        android:id="@+id/screen_lightness"
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:checked="true"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_weight="1"
+        android:hint="调节屏幕亮度"
+        android:textColorHint="#ff000000" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:src="@color/deviderline" />
+    <Switch
+        android:id="@+id/screen_lock"
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:checked="true"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_weight="1"
+        android:hint="双击顶栏锁屏"
+        android:textColorHint="#ff000000" />
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"

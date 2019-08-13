@@ -4,9 +4,9 @@ import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.app.Notification;
-import android.content.DialogInterface;
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -20,13 +20,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.os.SystemClock;
 import android.os.Vibrator;
 import android.provider.Settings;
-import android.renderscript.ScriptC;
-import android.text.BoringLayout;
-import android.text.method.ScrollingMovementMethod;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,49 +32,62 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.inputmethod.InputMethodInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.ScrollView;
-import android.widget.Scroller;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
-import java.nio.file.Paths;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MyAccessibilityService extends AccessibilityService {
 
-    //    static String TAG = "MyAccessibilityService";
+    static String TAG = "MyAccessibilityService";
+    static String CONTROL_LIGHTNESS="control_lightness";
+    static String CONTROL_LOCK="control_lock";
+    static String EVENT_TYPES="event_type";
+    static String FLAGS="flags";
+    static String PAC_MSG="pac_msg";
     public static Handler handler;
     boolean double_press;
-    boolean isrelease_up, isrelease_down, winchg_occur;
+    boolean is_release_up, is_release_down;
+    boolean control_lightness,control_lock,is_state_change;
     long star_up, star_down;
-    int winstatus_count, create_num, connect_num;
+    int win_state_count, create_num, connect_num;
     SharedPreferences sharedPreferences;
     ScheduledFuture future;
     ScheduledExecutorService executorService;
     AudioManager audioManager;
+    PackageManager packageManager;
     Vibrator vibrator;
-    ArrayList<String> pac_clk;
-    Set<String> pac_msg;
+    Set<String> pac_msg,pac_system;
+    ArrayList<String> pac_home,pac_input;
     AccessibilityServiceInfo asi;
+    String old_pac;
+    WindowManager windowManager;
+    DevicePolicyManager devicePolicyManager;
+    ScreenLightness screenLightness;
+    MediaButtonControl mediaButtonControl;
+    ScreenLock screenLock;
 
     @Override
     public void onCreate() {
@@ -98,75 +108,96 @@ public class MyAccessibilityService extends AccessibilityService {
             throw null;
         }
         try {
-            isrelease_up = true;
-            isrelease_down = true;
-            winchg_occur = false;
+            is_release_up = true;
+            is_release_down = true;
+            is_state_change=false;
             double_press = false;
             audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
             vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
+            windowManager=(WindowManager) getSystemService(WINDOW_SERVICE);
+            devicePolicyManager= (DevicePolicyManager) getSystemService(DEVICE_POLICY_SERVICE);
+            packageManager=getPackageManager();
             executorService = Executors.newSingleThreadScheduledExecutor();
+            mediaButtonControl=new MediaButtonControl(this);
+            screenLightness=new ScreenLightness(this);
+            screenLock=new ScreenLock(this);
+            old_pac=getPackageName();
             asi = getServiceInfo();
-            asi.eventTypes = sharedPreferences.getInt("eventTypes", AccessibilityEvent.TYPE_VIEW_CLICKED | AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
-            asi.flags = sharedPreferences.getInt("flags", asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
+            control_lightness=sharedPreferences.getBoolean(CONTROL_LIGHTNESS,false);
+            control_lock=sharedPreferences.getBoolean(CONTROL_LOCK,true)&&devicePolicyManager.isAdminActive(new ComponentName(this,MyDeviceAdminReceiver.class));
+            asi.eventTypes = sharedPreferences.getInt(EVENT_TYPES, AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED|AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
+            asi.flags = sharedPreferences.getInt(FLAGS, asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
             setServiceInfo(asi);
-            pac_clk = new ArrayList<>();
-            pac_clk.add("com.android.systemui");
-            pac_clk.add("com.android.packageinstaller");
-            pac_clk.add("android");
-            Intent intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-            ResolveInfo rsf = getPackageManager().resolveActivity(intent, 0);
-            if (rsf != null) pac_clk.add(rsf.activityInfo.packageName);
-            pac_msg = sharedPreferences.getStringSet("pac_msg", new HashSet<String>());
+            pac_msg = sharedPreferences.getStringSet(PAC_MSG, new HashSet<String>());
+            pac_home=new ArrayList<>();
+            Intent intent=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            List<ResolveInfo> ResolveInfoList =packageManager.queryIntentActivities(intent,PackageManager.MATCH_ALL);
+            for (ResolveInfo e:ResolveInfoList){ pac_home.add(e.activityInfo.packageName);}
+            pac_input=new ArrayList<>();
+            List<InputMethodInfo> inputMethodInfoList=((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).getInputMethodList();
+            for (InputMethodInfo e:inputMethodInfoList){pac_input.add(e.getPackageName());}
+            pac_system=new HashSet<>();
+            List<ApplicationInfo> packageInfoList =packageManager.getInstalledApplications(0);
+            for (ApplicationInfo e:packageInfoList){
+                if ((e.flags&ApplicationInfo.FLAG_SYSTEM)==ApplicationInfo.FLAG_SYSTEM) {
+                    pac_system.add(e.packageName);
+                    Log.i(TAG, packageManager.getApplicationLabel(e).toString());
+                }
+            }
+            pac_system.addAll(pac_input);
+            pac_system.removeAll(pac_home);
+            Log.i(TAG,pac_system.toString());
+            if (control_lightness) screenLightness.showFloat();
+            if (control_lock) screenLock.showLockFloat();
             handler = new Handler(new Handler.Callback() {
                 @Override
                 public boolean handleMessage(Message msg) {
                     switch (msg.what) {
                         case 0x00:
-                            WindowManager windowManager= (WindowManager) getSystemService(WINDOW_SERVICE);
                             DisplayMetrics metrics=new DisplayMetrics();
                             windowManager.getDefaultDisplay().getMetrics(metrics);
+                            final ComponentName componentName=new ComponentName(MyAccessibilityService.this,MyDeviceAdminReceiver.class);
                             final int width=(metrics.widthPixels/6)*5;
                             final int height=metrics.heightPixels;
                             final Set<String> pac_tem = new HashSet<>(pac_msg);
-                            final LayoutInflater inflater = LayoutInflater.from(getApplicationContext());
-                            final View view_1 = inflater.inflate(R.layout.maindialog, null);
+                            final LayoutInflater inflater = LayoutInflater.from(MyAccessibilityService.this);
+                            final View view_1 = inflater.inflate(R.layout.main_dialog, null);
                             final AlertDialog dialog_1 = new AlertDialog.Builder(MyAccessibilityService.this).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_1).create();
-                            final Switch switch_skip = view_1.findViewById(R.id.skip);
-                            final Switch switch_control = view_1.findViewById(R.id.control);
-                            final Switch switch_record = view_1.findViewById(R.id.record);
+                            final Switch switch_skip_advertising = view_1.findViewById(R.id.skip_advertising);
+                            final Switch switch_volume_control = view_1.findViewById(R.id.volume_control);
+                            final Switch switch_record_message = view_1.findViewById(R.id.record_message);
+                            final Switch switch_screen_lightness=view_1.findViewById(R.id.screen_lightness);
+                            final Switch switch_screen_lock=view_1.findViewById(R.id.screen_lock);
                             TextView bt_set=view_1.findViewById(R.id.set);
                             TextView bt_look=view_1.findViewById(R.id.look);
                             TextView bt_cancel=view_1.findViewById(R.id.cancel);
                             TextView bt_sure=view_1.findViewById(R.id.sure);
-                            switch_skip.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_VIEW_CLICKED) == AccessibilityEvent.TYPE_VIEW_CLICKED);
-                            switch_control.setChecked((asi.flags & AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) == AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
-                            switch_record.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
-                            switch_record.setOnLongClickListener(new View.OnLongClickListener() {
+                            switch_skip_advertising.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
+                            switch_volume_control.setChecked((asi.flags & AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) == AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
+                            switch_record_message.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
+                            switch_screen_lightness.setChecked(control_lightness);
+                            switch_screen_lock.setChecked(control_lock&&devicePolicyManager.isAdminActive(componentName));
+                            switch_record_message.setOnLongClickListener(new View.OnLongClickListener() {
                                 @Override
                                 public boolean onLongClick(View v) {
                                     View view_2 = inflater.inflate(R.layout.view_select, null);
                                     ListView listView = view_2.findViewById(R.id.listview);
-                                    final PackageManager packageManager = getPackageManager();
-                                    final List<ApplicationInfo> list = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
-                                    ListIterator<ApplicationInfo> iterator = list.listIterator();
+                                    final List<ApplicationInfo> list = packageManager.getInstalledApplications(0);
                                     final ArrayList<String> pac_name = new ArrayList<>();
                                     final ArrayList<String> pac_label = new ArrayList<>();
                                     final ArrayList<Drawable> drawables = new ArrayList<>();
-                                    while (iterator.hasNext()) {
-                                        ApplicationInfo next = iterator.next();
-                                        if ((next.flags & ApplicationInfo.FLAG_SYSTEM) == ApplicationInfo.FLAG_SYSTEM) {
-                                            iterator.remove();
-                                        } else {
-                                            pac_name.add(next.packageName);
-                                            pac_label.add(packageManager.getApplicationLabel(next).toString());
-                                            drawables.add(next.loadIcon(packageManager));
+                                    for (ApplicationInfo e:list) {
+                                        if ((e.flags & ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM) {
+                                            pac_name.add(e.packageName);
+                                            pac_label.add(packageManager.getApplicationLabel(e).toString());
+                                            drawables.add(e.loadIcon(packageManager));
                                         }
                                     }
                                     BaseAdapter baseAdapter = new BaseAdapter() {
                                         @Override
                                         public int getCount() {
-                                            return list.size();
+                                            return pac_name.size();
                                         }
 
                                         @Override
@@ -230,6 +261,27 @@ public class MyAccessibilityService extends AccessibilityService {
                                     CheckBox checkBox;
                                 }
                             });
+                            switch_screen_lightness.setOnLongClickListener(new View.OnLongClickListener() {
+                                @Override
+                                public boolean onLongClick(View v) {
+                                    screenLightness.showControlDialog();
+                                    dialog_1.dismiss();
+                                    return true;
+                                }
+                            });
+                            switch_screen_lock.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                                @Override
+                                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                                    if (isChecked&&!devicePolicyManager.isAdminActive(componentName)){
+                                        Intent intent=new Intent().setComponent(new ComponentName("com.android.settings","com.android.settings.DeviceAdminSettings"));
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                        startActivity(intent);
+                                        control_lock=false;
+                                        dialog_1.dismiss();
+                                    }
+                                }
+                            });
+
                             bt_set.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
@@ -308,32 +360,51 @@ public class MyAccessibilityService extends AccessibilityService {
                             bt_sure.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                    if (switch_skip.isChecked()) {
-                                        asi.eventTypes |= AccessibilityEvent.TYPE_VIEW_CLICKED;
-                                        sharedPreferences.edit().putInt("eventTypes", asi.eventTypes | AccessibilityEvent.TYPE_VIEW_CLICKED).commit();
+                                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                                    if (switch_skip_advertising.isChecked()) {
+                                        asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+                                        editor.putInt(EVENT_TYPES, asi.eventTypes | AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply();
 
                                     } else {
-                                        asi.eventTypes &= ~AccessibilityEvent.TYPE_VIEW_CLICKED;
-                                        sharedPreferences.edit().putInt("eventTypes", asi.eventTypes & (~AccessibilityEvent.TYPE_VIEW_CLICKED)).commit();
+                                        asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+                                        editor.putInt(EVENT_TYPES, asi.eventTypes & (~AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)).apply();
                                     }
-                                    if (switch_control.isChecked()) {
+                                    if (switch_volume_control.isChecked()) {
                                         asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
-                                        sharedPreferences.edit().putInt("flags", asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS).commit();
+                                        editor.putInt(FLAGS, asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS).apply();
                                     } else {
                                         asi.flags &= ~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
-                                        sharedPreferences.edit().putInt("flags", asi.flags & (~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS)).commit();
+                                        editor.putInt(FLAGS, asi.flags & (~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS)).apply();
                                     }
-                                    if (switch_record.isChecked()) {
+                                    if (switch_record_message.isChecked()) {
                                         asi.eventTypes |= AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
-                                        sharedPreferences.edit().putInt("eventTypes", asi.eventTypes | AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED).commit();
+                                        editor.putInt(EVENT_TYPES, asi.eventTypes | AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED).apply();
 
                                     } else {
                                         asi.eventTypes &= ~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
-                                        sharedPreferences.edit().putInt("eventTypes", asi.eventTypes & (~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED)).commit();
+                                        editor.putInt(EVENT_TYPES, asi.eventTypes & (~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED)).apply();
+                                    }
+                                    if (switch_screen_lightness.isChecked()){
+                                        screenLightness.showFloat();
+                                        control_lightness=true;
+                                        editor.putBoolean(CONTROL_LIGHTNESS,true).apply();
+                                    } else {
+                                        screenLightness.dismiss();
+                                        control_lightness=false;
+                                        editor.putBoolean(CONTROL_LIGHTNESS,false).apply();
+                                    }
+                                    if (switch_screen_lock.isChecked()){
+                                        screenLock.showLockFloat();
+                                        control_lock=true;
+                                        editor.putBoolean(CONTROL_LOCK,true).apply();
+                                    }else {
+                                        screenLock.dismiss();
+                                        control_lock=false;
+                                        editor.putBoolean(CONTROL_LOCK,false).apply();
                                     }
                                     setServiceInfo(asi);
-                                    sharedPreferences.edit().putStringSet("pac_msg", pac_tem).commit();
                                     pac_msg = pac_tem;
+                                    editor.putStringSet(PAC_MSG, pac_tem).apply();
                                     dialog_1.dismiss();
                                 }
                             });
@@ -356,41 +427,35 @@ public class MyAccessibilityService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-//        Log.i(TAG,AccessibilityEvent.eventTypeToString(event.getEventType()));
+        Log.i(TAG,AccessibilityEvent.eventTypeToString(event.getEventType())+"|"+event.getPackageName()+"|"+event.getClassName()+"|"+win_state_count);
         try {
-            switch (event.getEventType()) {
-                case AccessibilityEvent.TYPE_VIEW_CLICKED:
-                    if (pac_clk.contains(event.getPackageName().toString())) {
-                        asi.eventTypes |= (AccessibilityEvent.TYPE_WINDOWS_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+               switch (event.getEventType()) {
+                case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
+                    String str=event.getPackageName().toString();
+                    if (!(str.equals(old_pac) || event.getClassName().toString().startsWith("android.widget.") || pac_system.contains(str))){
+                        old_pac = str;
+                        if (pac_home.contains(str)) break;
+                        asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                         setServiceInfo(asi);
+                        is_state_change = true;
+                        win_state_count = 0;
+                        findSkipButton(event);
+                        if (future!=null)
+                        future.cancel(true);
+                        future= executorService.schedule(new Runnable() {
+                            @Override
+                            public void run() {
+                                asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+                                setServiceInfo(asi);
+                                is_state_change = false;
+                                Log.i(TAG,"Time out");
+                            }
+                        },5000,TimeUnit.MILLISECONDS);
                     }
                     break;
-                case AccessibilityEvent.TYPE_WINDOWS_CHANGED:
-                    winchg_occur = true;
-                    winstatus_count = 0;
-                    break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
-                    if (winchg_occur) {
-                        AccessibilityNodeInfo info = getRootInActiveWindow();
-                        if (info == null) break;
-                        List<AccessibilityNodeInfo> list = info.findAccessibilityNodeInfosByText("跳过");
-                        if (!list.isEmpty()) {
-                            for (AccessibilityNodeInfo e : list) {
-                                if (!e.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                                    if (!e.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                                        Rect rect = new Rect();
-                                        e.getBoundsInScreen(rect);
-                                        click(rect.centerX(), rect.centerY(), 0, 10);
-                                    }
-                                }
-                            }
-                        }
-                        if (!list.isEmpty() || winstatus_count >= 8) {
-                            winchg_occur = false;
-                            asi.eventTypes &= ~(AccessibilityEvent.TYPE_WINDOWS_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
-                            setServiceInfo(asi);
-                        }
-                        winstatus_count++;
+                    if (is_state_change && !event.getPackageName().equals("com.android.systemui")) {
+                        findSkipButton(event);
                     }
                     break;
                 case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
@@ -420,18 +485,18 @@ public class MyAccessibilityService extends AccessibilityService {
                         case KeyEvent.ACTION_DOWN:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> KeyEvent.ACTION_DOWN");
                             star_up = System.currentTimeMillis();
-                            isrelease_up = false;
+                            is_release_up = false;
                             double_press = false;
-                            if (isrelease_down) {
+                            if (is_release_down) {
                                 future = executorService.schedule(new Runnable() {
                                     @Override
                                     public void run() {
 //                                        Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> THREAD");
-                                        if (!isrelease_down) {
-                                            play_pause_Music();
+                                        if (!is_release_down) {
+                                            mediaButtonControl.play_pause_Music();
                                             vibrator.vibrate(8);
-                                        } else if (!isrelease_up && audioManager.isMusicActive()) {
-                                            nextMusic();
+                                        } else if (!is_release_up && audioManager.isMusicActive()) {
+                                            mediaButtonControl.nextMusic();
                                             vibrator.vibrate(8);
                                         }
                                     }
@@ -442,8 +507,9 @@ public class MyAccessibilityService extends AccessibilityService {
                             break;
                         case KeyEvent.ACTION_UP:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> KeyEvent.ACTION_UP");
+                            if (future!=null)
                             future.cancel(false);
-                            isrelease_up = true;
+                            is_release_up = true;
                             if (!double_press && System.currentTimeMillis() - star_up < 800) {
                                 audioManager.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
                             }
@@ -455,18 +521,18 @@ public class MyAccessibilityService extends AccessibilityService {
                         case KeyEvent.ACTION_DOWN:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> KeyEvent.ACTION_DOWN");
                             star_down = System.currentTimeMillis();
-                            isrelease_down = false;
+                            is_release_down = false;
                             double_press = false;
-                            if (isrelease_up) {
+                            if (is_release_up) {
                                 future = executorService.schedule(new Runnable() {
                                     @Override
                                     public void run() {
 //                                        Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> THREAD");
-                                        if (!isrelease_up) {
-                                            play_pause_Music();
+                                        if (!is_release_up) {
+                                            mediaButtonControl.play_pause_Music();
                                             vibrator.vibrate(8);
-                                        } else if (!isrelease_down && audioManager.isMusicActive()) {
-                                            previousMusic();
+                                        } else if (!is_release_down && audioManager.isMusicActive()) {
+                                            mediaButtonControl.previousMusic();
                                             vibrator.vibrate(8);
                                         }
                                     }
@@ -478,8 +544,9 @@ public class MyAccessibilityService extends AccessibilityService {
                             break;
                         case KeyEvent.ACTION_UP:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> KeyEvent.ACTION_UP");
+                            if (future!=null)
                             future.cancel(false);
-                            isrelease_down = true;
+                            is_release_down = true;
                             if (!double_press && System.currentTimeMillis() - star_down < 800) {
                                 audioManager.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
                             }
@@ -538,47 +605,27 @@ public class MyAccessibilityService extends AccessibilityService {
         }
     }
 
-    /**
-     * 播放
-     * 暂停
-     */
-    public void play_pause_Music() {
-        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent downEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, 1);
-        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
-        sendOrderedBroadcast(downIntent, null);
-        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent upEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, 1);
-        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
-        sendOrderedBroadcast(upIntent, null);
+    private void findSkipButton(AccessibilityEvent event){
+        AccessibilityNodeInfo nodeInfo = win_state_count <= 2 ? getRootInActiveWindow() : event.getSource();
+        if (nodeInfo == null) return;
+        List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText("跳过");
+        for (AccessibilityNodeInfo e : list) {
+            if (!e.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                if (!e.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    Rect rect = new Rect();
+                    e.getBoundsInScreen(rect);
+                    click(rect.centerX(), rect.centerY(), 0, 10);
+                }
+            }
+        }
+        if (!list.isEmpty() || win_state_count >= 50) {
+            Log.i(TAG,win_state_count+"");
+            asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+            setServiceInfo(asi);
+            is_state_change = false;
+            if (future!=null)
+            future.cancel(true);
+        }
+        win_state_count++;
     }
-
-    /**
-     * 上一曲
-     */
-    public void previousMusic() {
-        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent downEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PREVIOUS, 1);
-        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
-        sendOrderedBroadcast(downIntent, null);
-        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent upEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PREVIOUS, 1);
-        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
-        sendOrderedBroadcast(upIntent, null);
-    }
-
-    /**
-     * 下一曲
-     */
-    public void nextMusic() {
-        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent downEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT, 1);
-        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
-        sendOrderedBroadcast(downIntent, null);
-        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent upEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_NEXT, 1);
-        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
-        sendOrderedBroadcast(upIntent, null);
-    }
-
 }
