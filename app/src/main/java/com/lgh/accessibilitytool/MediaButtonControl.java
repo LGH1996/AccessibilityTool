@@ -6,11 +6,13 @@ import android.os.SystemClock;
 import android.view.KeyEvent;
 
 public class MediaButtonControl {
-    private static String TAG="VOLUME";
+    private static String TAG = "VOLUME";
     Context context;
-    public MediaButtonControl(Context context){
-       this.context=context;
+
+    public MediaButtonControl(Context context) {
+        this.context = context;
     }
+
     /**
      * 播放
      * 暂停

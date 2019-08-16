@@ -7,6 +7,7 @@ import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -41,6 +42,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -59,25 +61,26 @@ import java.util.concurrent.TimeUnit;
 public class MyAccessibilityService extends AccessibilityService {
 
     static String TAG = "MyAccessibilityService";
-    static String CONTROL_LIGHTNESS="control_lightness";
-    static String CONTROL_LOCK="control_lock";
-    static String EVENT_TYPES="event_type";
-    static String FLAGS="flags";
-    static String PAC_MSG="pac_msg";
+    static String CONTROL_LIGHTNESS = "control_lightness";
+    static String CONTROL_LOCK = "control_lock";
+    static String EVENT_TYPES = "event_type";
+    static String FLAGS = "flags";
+    static String PAC_MSG = "pac_msg";
+    static String VIBRATION_STRENGTH = "vibration_strength";
     public static Handler handler;
     boolean double_press;
     boolean is_release_up, is_release_down;
-    boolean control_lightness,control_lock,is_state_change;
+    boolean control_lightness, control_lock, is_state_change;
     long star_up, star_down;
-    int win_state_count, create_num, connect_num;
+    int win_state_count, create_num, connect_num, vibration_strength;
     SharedPreferences sharedPreferences;
     ScheduledFuture future;
     ScheduledExecutorService executorService;
     AudioManager audioManager;
     PackageManager packageManager;
     Vibrator vibrator;
-    Set<String> pac_msg,pac_system;
-    ArrayList<String> pac_home,pac_input;
+    Set<String> pac_msg, pac_system;
+    ArrayList<String> pac_home, pac_input;
     AccessibilityServiceInfo asi;
     String old_pac;
     WindowManager windowManager;
@@ -107,37 +110,42 @@ public class MyAccessibilityService extends AccessibilityService {
         try {
             is_release_up = true;
             is_release_down = true;
-            is_state_change=false;
+            is_state_change = false;
             double_press = false;
             audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
             vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
-            windowManager=(WindowManager) getSystemService(WINDOW_SERVICE);
-            devicePolicyManager= (DevicePolicyManager) getSystemService(DEVICE_POLICY_SERVICE);
-            packageManager=getPackageManager();
+            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+            devicePolicyManager = (DevicePolicyManager) getSystemService(DEVICE_POLICY_SERVICE);
+            packageManager = getPackageManager();
             executorService = Executors.newSingleThreadScheduledExecutor();
-            mediaButtonControl=new MediaButtonControl(this);
-            screenLightness=new ScreenLightness(this);
-            screenLock=new ScreenLock(this);
-            old_pac=getPackageName();
+            mediaButtonControl = new MediaButtonControl(this);
+            screenLightness = new ScreenLightness(this);
+            screenLock = new ScreenLock(this);
+            old_pac = getPackageName();
             asi = getServiceInfo();
-            control_lightness=sharedPreferences.getBoolean(CONTROL_LIGHTNESS,false);
-            control_lock=sharedPreferences.getBoolean(CONTROL_LOCK,true)&&devicePolicyManager.isAdminActive(new ComponentName(this,MyDeviceAdminReceiver.class));
-            asi.eventTypes = sharedPreferences.getInt(EVENT_TYPES, AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED|AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
+            control_lightness = sharedPreferences.getBoolean(CONTROL_LIGHTNESS, false);
+            vibration_strength = sharedPreferences.getInt(VIBRATION_STRENGTH, 50);
+            control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(this, MyDeviceAdminReceiver.class)));
+            asi.eventTypes = sharedPreferences.getInt(EVENT_TYPES, AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
             asi.flags = sharedPreferences.getInt(FLAGS, asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
             setServiceInfo(asi);
             pac_msg = sharedPreferences.getStringSet(PAC_MSG, new HashSet<String>());
-            pac_home=new ArrayList<>();
-            Intent intent=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-            List<ResolveInfo> ResolveInfoList =packageManager.queryIntentActivities(intent,PackageManager.MATCH_ALL);
-            for (ResolveInfo e:ResolveInfoList){ pac_home.add(e.activityInfo.packageName);}
-            pac_input=new ArrayList<>();
-            List<InputMethodInfo> inputMethodInfoList=((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).getInputMethodList();
-            for (InputMethodInfo e:inputMethodInfoList){pac_input.add(e.getPackageName());}
-            pac_system=new HashSet<>();
-            List<ApplicationInfo> packageInfoList =packageManager.getInstalledApplications(0);
-            for (ApplicationInfo e:packageInfoList){
-                if ((e.flags&ApplicationInfo.FLAG_SYSTEM)==ApplicationInfo.FLAG_SYSTEM) {
+            pac_home = new ArrayList<>();
+            Intent intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            List<ResolveInfo> ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
+            for (ResolveInfo e : ResolveInfoList) {
+                pac_home.add(e.activityInfo.packageName);
+            }
+            pac_input = new ArrayList<>();
+            List<InputMethodInfo> inputMethodInfoList = ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).getInputMethodList();
+            for (InputMethodInfo e : inputMethodInfoList) {
+                pac_input.add(e.getPackageName());
+            }
+            pac_system = new HashSet<>();
+            List<ApplicationInfo> packageInfoList = packageManager.getInstalledApplications(0);
+            for (ApplicationInfo e : packageInfoList) {
+                if ((e.flags & ApplicationInfo.FLAG_SYSTEM) == ApplicationInfo.FLAG_SYSTEM) {
                     pac_system.add(e.packageName);
                 }
             }
@@ -150,39 +158,76 @@ public class MyAccessibilityService extends AccessibilityService {
                 public boolean handleMessage(Message msg) {
                     switch (msg.what) {
                         case 0x00:
-                            DisplayMetrics metrics=new DisplayMetrics();
+                            DisplayMetrics metrics = new DisplayMetrics();
                             windowManager.getDefaultDisplay().getMetrics(metrics);
-                            final ComponentName componentName=new ComponentName(MyAccessibilityService.this,MyDeviceAdminReceiver.class);
-                            final int width=(metrics.widthPixels/6)*5;
-                            final int height=metrics.heightPixels;
-                            final Set<String> pac_tem = new HashSet<>(pac_msg);
+                            final ComponentName componentName = new ComponentName(MyAccessibilityService.this, MyDeviceAdminReceiver.class);
+                            final int width = (metrics.widthPixels / 6) * 5;
+                            final int height = metrics.heightPixels;
                             final LayoutInflater inflater = LayoutInflater.from(MyAccessibilityService.this);
-                            final View view_1 = inflater.inflate(R.layout.main_dialog, null);
-                            final AlertDialog dialog_1 = new AlertDialog.Builder(MyAccessibilityService.this).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_1).create();
-                            final Switch switch_skip_advertising = view_1.findViewById(R.id.skip_advertising);
-                            final Switch switch_volume_control = view_1.findViewById(R.id.volume_control);
-                            final Switch switch_record_message = view_1.findViewById(R.id.record_message);
-                            final Switch switch_screen_lightness=view_1.findViewById(R.id.screen_lightness);
-                            final Switch switch_screen_lock=view_1.findViewById(R.id.screen_lock);
-                            TextView bt_set=view_1.findViewById(R.id.set);
-                            TextView bt_look=view_1.findViewById(R.id.look);
-                            TextView bt_cancel=view_1.findViewById(R.id.cancel);
-                            TextView bt_sure=view_1.findViewById(R.id.sure);
+                            final View view_main = inflater.inflate(R.layout.main_dialog, null);
+                            final AlertDialog dialog_main = new AlertDialog.Builder(MyAccessibilityService.this).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_main).create();
+                            final Switch switch_skip_advertising = view_main.findViewById(R.id.skip_advertising);
+                            final Switch switch_volume_control = view_main.findViewById(R.id.volume_control);
+                            final Switch switch_record_message = view_main.findViewById(R.id.record_message);
+                            final Switch switch_screen_lightness = view_main.findViewById(R.id.screen_lightness);
+                            final Switch switch_screen_lock = view_main.findViewById(R.id.screen_lock);
+                            TextView bt_set = view_main.findViewById(R.id.set);
+                            TextView bt_look = view_main.findViewById(R.id.look);
+                            TextView bt_cancel = view_main.findViewById(R.id.cancel);
+                            TextView bt_sure = view_main.findViewById(R.id.sure);
                             switch_skip_advertising.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
                             switch_volume_control.setChecked((asi.flags & AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) == AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
                             switch_record_message.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
                             switch_screen_lightness.setChecked(control_lightness);
-                            switch_screen_lock.setChecked(control_lock&&devicePolicyManager.isAdminActive(componentName));
+                            switch_screen_lock.setChecked(control_lock && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(componentName)));
+                            switch_volume_control.setOnLongClickListener(new View.OnLongClickListener() {
+                                @Override
+                                public boolean onLongClick(View v) {
+                                    View view = inflater.inflate(R.layout.vibration_strength, null);
+                                    SeekBar seekBar = view.findViewById(R.id.strength);
+                                    seekBar.setProgress(vibration_strength);
+                                    seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                                        @Override
+                                        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                                            vibration_strength = progress;
+                                        }
+
+                                        @Override
+                                        public void onStartTrackingTouch(SeekBar seekBar) {
+                                        }
+
+                                        @Override
+                                        public void onStopTrackingTouch(SeekBar seekBar) {
+                                        }
+                                    });
+                                    AlertDialog dialog = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
+                                        @Override
+                                        public void onDismiss(DialogInterface dialog) {
+                                            sharedPreferences.edit().putInt(VIBRATION_STRENGTH, vibration_strength).apply();
+                                        }
+                                    }).create();
+                                    Window win = dialog.getWindow();
+                                    win.setBackgroundDrawableResource(R.drawable.dialogbackground);
+                                    win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                                    WindowManager.LayoutParams params = win.getAttributes();
+                                    win.setDimAmount(0);
+                                    dialog.show();
+                                    params.width = width;
+                                    win.setAttributes(params);
+                                    dialog_main.dismiss();
+                                    return true;
+                                }
+                            });
                             switch_record_message.setOnLongClickListener(new View.OnLongClickListener() {
                                 @Override
                                 public boolean onLongClick(View v) {
-                                    View view_2 = inflater.inflate(R.layout.view_select, null);
-                                    ListView listView = view_2.findViewById(R.id.listview);
+                                    View view = inflater.inflate(R.layout.view_select, null);
+                                    ListView listView = view.findViewById(R.id.listview);
                                     final List<ApplicationInfo> list = packageManager.getInstalledApplications(0);
                                     final ArrayList<String> pac_name = new ArrayList<>();
                                     final ArrayList<String> pac_label = new ArrayList<>();
                                     final ArrayList<Drawable> drawables = new ArrayList<>();
-                                    for (ApplicationInfo e:list) {
+                                    for (ApplicationInfo e : list) {
                                         if ((e.flags & ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM) {
                                             pac_name.add(e.packageName);
                                             pac_label.add(packageManager.getApplicationLabel(e).toString());
@@ -220,7 +265,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                             }
                                             holder.textView.setText(pac_label.get(position));
                                             holder.imageView.setImageDrawable(drawables.get(position));
-                                            holder.checkBox.setChecked(pac_tem.contains(pac_name.get(position)));
+                                            holder.checkBox.setChecked(pac_msg.contains(pac_name.get(position)));
                                             return convertView;
                                         }
                                     };
@@ -229,24 +274,31 @@ public class MyAccessibilityService extends AccessibilityService {
                                         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                                             CheckBox c = ((ViewHolder) view.getTag()).checkBox;
                                             if (c.isChecked()) {
-                                                pac_tem.remove(pac_name.get(position));
+                                                pac_msg.remove(pac_name.get(position));
                                                 c.setChecked(false);
                                             } else {
-                                                pac_tem.add(pac_name.get(position));
+                                                pac_msg.add(pac_name.get(position));
                                                 c.setChecked(true);
                                             }
                                         }
                                     });
                                     listView.setAdapter(baseAdapter);
-                                    AlertDialog dialog_2 = new AlertDialog.Builder(MyAccessibilityService.this).setView(view_2).create();
-                                    Window win_2 = dialog_2.getWindow();
-                                    win_2.setBackgroundDrawableResource(R.drawable.dialogbackground);
-                                    win_2.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                                    WindowManager.LayoutParams params=win_2.getAttributes();
-                                    win_2.setDimAmount(0);
-                                    dialog_2.show();
-                                    params.width=width;
-                                    win_2.setAttributes(params);
+                                    AlertDialog dialog = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
+                                        @Override
+                                        public void onDismiss(DialogInterface dialog) {
+                                            sharedPreferences.edit().putStringSet(PAC_MSG, pac_msg).apply();
+                                        }
+                                    }).create();
+
+                                    Window win = dialog.getWindow();
+                                    win.setBackgroundDrawableResource(R.drawable.dialogbackground);
+                                    win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                                    WindowManager.LayoutParams params = win.getAttributes();
+                                    win.setDimAmount(0);
+                                    dialog.show();
+                                    params.width = width;
+                                    win.setAttributes(params);
+                                    dialog_main.dismiss();
                                     return true;
                                 }
 
@@ -260,19 +312,19 @@ public class MyAccessibilityService extends AccessibilityService {
                                 @Override
                                 public boolean onLongClick(View v) {
                                     screenLightness.showControlDialog();
-                                    dialog_1.dismiss();
+                                    dialog_main.dismiss();
                                     return true;
                                 }
                             });
                             switch_screen_lock.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                                 @Override
                                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                                    if (isChecked&&!devicePolicyManager.isAdminActive(componentName)){
-                                        Intent intent=new Intent().setComponent(new ComponentName("com.android.settings","com.android.settings.DeviceAdminSettings"));
+                                    if (isChecked && !devicePolicyManager.isAdminActive(componentName) && (Build.VERSION.SDK_INT < Build.VERSION_CODES.P)) {
+                                        Intent intent = new Intent().setComponent(new ComponentName("com.android.settings", "com.android.settings.DeviceAdminSettings"));
                                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                                         startActivity(intent);
-                                        control_lock=false;
-                                        dialog_1.dismiss();
+                                        control_lock = false;
+                                        dialog_main.dismiss();
                                     }
                                 }
                             });
@@ -283,73 +335,77 @@ public class MyAccessibilityService extends AccessibilityService {
                                     Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
                                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                                     startActivity(intent);
-                                    dialog_1.dismiss();
+                                    dialog_main.dismiss();
                                 }
                             });
                             bt_look.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                   try {
-                                       File file=new File(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt");
-                                       if (!file.exists()){
-                                           Toast.makeText(MyAccessibilityService.this,"当前文件记录为空",Toast.LENGTH_SHORT).show();
-                                           return;
-                                       }
-                                       final View view_3= inflater.inflate(R.layout.view_massage,null);
-                                       final AlertDialog dialog_3=new AlertDialog.Builder(MyAccessibilityService.this).setView(view_3).create();
-                                       final EditText textView = view_3.findViewById(R.id.editText);
-                                       TextView but_empty=view_3.findViewById(R.id.empty);
-                                       TextView but_cancel=view_3.findViewById(R.id.cancel);
-                                       TextView but_sure=view_3.findViewById(R.id.sure);
-                                       but_empty.setOnClickListener(new View.OnClickListener() {
-                                           @Override
-                                           public void onClick(View v) {
-                                               textView.setText("");
-                                           }
-                                       });
-                                       but_cancel.setOnClickListener(new View.OnClickListener() {
-                                           @Override
-                                           public void onClick(View v) {
-                                               dialog_3.dismiss();
-                                           }
-                                       });
-                                       but_sure.setOnClickListener(new View.OnClickListener() {
-                                           @Override
-                                           public void onClick(View v) {
-                                               try {
-                                                   FileWriter writer=new FileWriter(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt",false);
-                                                   writer.write(textView.getText().toString());
-                                                   writer.close();
-                                                   dialog_3.dismiss();
-                                               }catch (Throwable e){e.printStackTrace();}
-                                           }
-                                       });
-                                       Scanner scanner =new Scanner(file);
-                                       StringBuilder builder=new StringBuilder();
-                                       while (scanner.hasNextLine()){
-                                          builder.append(scanner.nextLine()+"\n");
-                                       }
-                                       scanner.close();
-                                       textView.setText(builder.toString());
-                                       textView.setSelection(builder.length());
-                                       Window win_3 = dialog_3.getWindow();
-                                       win_3.setBackgroundDrawableResource(R.drawable.dialogbackground);
-                                       win_3.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                                       WindowManager.LayoutParams params=win_3.getAttributes();
-                                       win_3.setDimAmount(0);
-                                       dialog_3.show();
-                                       params.width=width;
-                                       params.height=(height/6)*5;
-                                       win_3.setAttributes(params);
-                                       dialog_1.dismiss();
-                                   }catch (Throwable e){e.printStackTrace();}
+                                    try {
+                                        File file = new File(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt");
+                                        if (!file.exists()) {
+                                            Toast.makeText(MyAccessibilityService.this, "当前文件记录为空", Toast.LENGTH_SHORT).show();
+                                            return;
+                                        }
+                                        final View view = inflater.inflate(R.layout.view_massage, null);
+                                        final AlertDialog dialog = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).create();
+                                        final EditText textView = view.findViewById(R.id.editText);
+                                        TextView but_empty = view.findViewById(R.id.empty);
+                                        TextView but_cancel = view.findViewById(R.id.cancel);
+                                        TextView but_sure = view.findViewById(R.id.sure);
+                                        but_empty.setOnClickListener(new View.OnClickListener() {
+                                            @Override
+                                            public void onClick(View v) {
+                                                textView.setText("");
+                                            }
+                                        });
+                                        but_cancel.setOnClickListener(new View.OnClickListener() {
+                                            @Override
+                                            public void onClick(View v) {
+                                                dialog.dismiss();
+                                            }
+                                        });
+                                        but_sure.setOnClickListener(new View.OnClickListener() {
+                                            @Override
+                                            public void onClick(View v) {
+                                                try {
+                                                    FileWriter writer = new FileWriter(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt", false);
+                                                    writer.write(textView.getText().toString());
+                                                    writer.close();
+                                                    dialog.dismiss();
+                                                } catch (Throwable e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        });
+                                        Scanner scanner = new Scanner(file);
+                                        StringBuilder builder = new StringBuilder();
+                                        while (scanner.hasNextLine()) {
+                                            builder.append(scanner.nextLine() + "\n");
+                                        }
+                                        scanner.close();
+                                        textView.setText(builder.toString());
+                                        textView.setSelection(builder.length());
+                                        Window win = dialog.getWindow();
+                                        win.setBackgroundDrawableResource(R.drawable.dialogbackground);
+                                        win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                                        WindowManager.LayoutParams params = win.getAttributes();
+                                        win.setDimAmount(0);
+                                        dialog.show();
+                                        params.width = width;
+                                        params.height = (height / 6) * 5;
+                                        win.setAttributes(params);
+                                        dialog_main.dismiss();
+                                    } catch (Throwable e) {
+                                        e.printStackTrace();
+                                    }
 
                                 }
                             });
                             bt_cancel.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                    dialog_1.dismiss();
+                                    dialog_main.dismiss();
                                 }
                             });
                             bt_sure.setOnClickListener(new View.OnClickListener() {
@@ -379,38 +435,43 @@ public class MyAccessibilityService extends AccessibilityService {
                                         asi.eventTypes &= ~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
                                         editor.putInt(EVENT_TYPES, asi.eventTypes & (~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED)).apply();
                                     }
-                                    if (switch_screen_lightness.isChecked()){
+                                    if (switch_screen_lightness.isChecked()) {
                                         screenLightness.showFloat();
-                                        control_lightness=true;
-                                        editor.putBoolean(CONTROL_LIGHTNESS,true).apply();
+                                        control_lightness = true;
+                                        editor.putBoolean(CONTROL_LIGHTNESS, true).apply();
                                     } else {
                                         screenLightness.dismiss();
-                                        control_lightness=false;
-                                        editor.putBoolean(CONTROL_LIGHTNESS,false).apply();
+                                        control_lightness = false;
+                                        editor.putBoolean(CONTROL_LIGHTNESS, false).apply();
                                     }
-                                    if (switch_screen_lock.isChecked()){
+                                    if (switch_screen_lock.isChecked()) {
                                         screenLock.showLockFloat();
-                                        control_lock=true;
-                                        editor.putBoolean(CONTROL_LOCK,true).apply();
-                                    }else {
+                                        control_lock = true;
+                                        editor.putBoolean(CONTROL_LOCK, true).apply();
+                                    } else {
                                         screenLock.dismiss();
-                                        control_lock=false;
-                                        editor.putBoolean(CONTROL_LOCK,false).apply();
+                                        control_lock = false;
+                                        editor.putBoolean(CONTROL_LOCK, false).apply();
                                     }
                                     setServiceInfo(asi);
-                                    pac_msg = pac_tem;
-                                    editor.putStringSet(PAC_MSG, pac_tem).apply();
-                                    dialog_1.dismiss();
+                                    dialog_main.dismiss();
                                 }
                             });
-                            Window win_1 = dialog_1.getWindow();
-                            win_1.setBackgroundDrawableResource(R.drawable.dialogbackground);
-                            win_1.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                            WindowManager.LayoutParams params=win_1.getAttributes();
-                            win_1.setDimAmount(0);
-                            dialog_1.show();
-                            params.width=width;
-                            win_1.setAttributes(params);
+                            Window win = dialog_main.getWindow();
+                            win.setBackgroundDrawableResource(R.drawable.dialogbackground);
+                            win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                            WindowManager.LayoutParams params = win.getAttributes();
+                            win.setDimAmount(0);
+                            dialog_main.show();
+                            params.width = width;
+                            win.setAttributes(params);
+                            break;
+                        case 0x01:
+                            performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN);
+                            break;
+                        case 0x02:
+                            performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS);
+                            break;
                     }
                     return true;
                 }
@@ -424,10 +485,10 @@ public class MyAccessibilityService extends AccessibilityService {
     public void onAccessibilityEvent(AccessibilityEvent event) {
 //        Log.i(TAG,AccessibilityEvent.eventTypeToString(event.getEventType())+"|"+event.getPackageName()+"|"+event.getClassName()+"|"+win_state_count);
         try {
-               switch (event.getEventType()) {
+            switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
-                    String str=event.getPackageName().toString();
-                    if (!(str.equals(old_pac) || event.getClassName().toString().startsWith("android.widget.") || pac_system.contains(str))){
+                    String str = event.getPackageName().toString();
+                    if (!(str.equals(old_pac) || event.getClassName().toString().startsWith("android.widget.") || pac_system.contains(str))) {
                         old_pac = str;
                         if (pac_home.contains(str)) break;
                         asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
@@ -435,16 +496,16 @@ public class MyAccessibilityService extends AccessibilityService {
                         is_state_change = true;
                         win_state_count = 0;
                         findSkipButton(event);
-                        if (future!=null)
-                        future.cancel(true);
-                        future= executorService.schedule(new Runnable() {
+                        if (future != null)
+                            future.cancel(true);
+                        future = executorService.schedule(new Runnable() {
                             @Override
                             public void run() {
                                 asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                                 setServiceInfo(asi);
                                 is_state_change = false;
                             }
-                        },5000,TimeUnit.MILLISECONDS);
+                        }, 8000, TimeUnit.MILLISECONDS);
                     }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
@@ -488,10 +549,10 @@ public class MyAccessibilityService extends AccessibilityService {
 //                                        Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> THREAD");
                                         if (!is_release_down) {
                                             mediaButtonControl.play_pause_Music();
-                                            vibrator.vibrate(8);
+                                            vibrator.vibrate(vibration_strength);
                                         } else if (!is_release_up && audioManager.isMusicActive()) {
                                             mediaButtonControl.nextMusic();
-                                            vibrator.vibrate(8);
+                                            vibrator.vibrate(vibration_strength);
                                         }
                                     }
                                 }, 800, TimeUnit.MILLISECONDS);
@@ -501,8 +562,8 @@ public class MyAccessibilityService extends AccessibilityService {
                             break;
                         case KeyEvent.ACTION_UP:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> KeyEvent.ACTION_UP");
-                            if (future!=null)
-                            future.cancel(false);
+                            if (future != null)
+                                future.cancel(false);
                             is_release_up = true;
                             if (!double_press && System.currentTimeMillis() - star_up < 800) {
                                 audioManager.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
@@ -524,10 +585,10 @@ public class MyAccessibilityService extends AccessibilityService {
 //                                        Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> THREAD");
                                         if (!is_release_up) {
                                             mediaButtonControl.play_pause_Music();
-                                            vibrator.vibrate(8);
+                                            vibrator.vibrate(vibration_strength);
                                         } else if (!is_release_down && audioManager.isMusicActive()) {
                                             mediaButtonControl.previousMusic();
-                                            vibrator.vibrate(8);
+                                            vibrator.vibrate(vibration_strength);
                                         }
                                     }
                                 }, 800, TimeUnit.MILLISECONDS);
@@ -538,8 +599,8 @@ public class MyAccessibilityService extends AccessibilityService {
                             break;
                         case KeyEvent.ACTION_UP:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> KeyEvent.ACTION_UP");
-                            if (future!=null)
-                            future.cancel(false);
+                            if (future != null)
+                                future.cancel(false);
                             is_release_down = true;
                             if (!double_press && System.currentTimeMillis() - star_down < 800) {
                                 audioManager.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
@@ -559,7 +620,6 @@ public class MyAccessibilityService extends AccessibilityService {
 
     @Override
     public void onInterrupt() {
-
     }
 
     @Override
@@ -599,7 +659,7 @@ public class MyAccessibilityService extends AccessibilityService {
         }
     }
 
-    private void findSkipButton(AccessibilityEvent event){
+    private void findSkipButton(AccessibilityEvent event) {
         AccessibilityNodeInfo nodeInfo = win_state_count <= 2 ? getRootInActiveWindow() : event.getSource();
         if (nodeInfo == null) return;
         List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText("跳过");
@@ -612,12 +672,12 @@ public class MyAccessibilityService extends AccessibilityService {
                 }
             }
         }
-        if (!list.isEmpty() || win_state_count >= 50) {
+        if (!list.isEmpty() || win_state_count >= 20) {
             asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
             setServiceInfo(asi);
             is_state_change = false;
-            if (future!=null)
-            future.cancel(true);
+            if (future != null)
+                future.cancel(true);
         }
         win_state_count++;
     }

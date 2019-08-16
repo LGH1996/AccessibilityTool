@@ -75,7 +75,7 @@
         android:layout_marginTop="10dp"
         android:layout_marginBottom="10dp"
         android:layout_weight="1"
-        android:hint="双击顶栏锁屏"
+        android:hint="双击顶角锁屏"
         android:textColorHint="#ff000000" />
     <ImageView
         android:layout_width="match_parent"
