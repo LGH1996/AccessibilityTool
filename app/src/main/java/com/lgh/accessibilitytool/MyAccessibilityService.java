@@ -209,9 +209,9 @@ public class MyAccessibilityService extends AccessibilityService {
                                     Window win = dialog.getWindow();
                                     win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                                     win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                                    WindowManager.LayoutParams params = win.getAttributes();
                                     win.setDimAmount(0);
                                     dialog.show();
+                                    WindowManager.LayoutParams params = win.getAttributes();
                                     params.width = width;
                                     win.setAttributes(params);
                                     dialog_main.dismiss();
@@ -293,9 +293,9 @@ public class MyAccessibilityService extends AccessibilityService {
                                     Window win = dialog.getWindow();
                                     win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                                     win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                                    WindowManager.LayoutParams params = win.getAttributes();
                                     win.setDimAmount(0);
                                     dialog.show();
+                                    WindowManager.LayoutParams params = win.getAttributes();
                                     params.width = width;
                                     win.setAttributes(params);
                                     dialog_main.dismiss();
@@ -389,9 +389,9 @@ public class MyAccessibilityService extends AccessibilityService {
                                         Window win = dialog.getWindow();
                                         win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                                         win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                                        WindowManager.LayoutParams params = win.getAttributes();
                                         win.setDimAmount(0);
                                         dialog.show();
+                                        WindowManager.LayoutParams params = win.getAttributes();
                                         params.width = width;
                                         params.height = (height / 6) * 5;
                                         win.setAttributes(params);
@@ -460,9 +460,9 @@ public class MyAccessibilityService extends AccessibilityService {
                             Window win = dialog_main.getWindow();
                             win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                             win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                            WindowManager.LayoutParams params = win.getAttributes();
                             win.setDimAmount(0);
                             dialog_main.show();
+                            WindowManager.LayoutParams params = win.getAttributes();
                             params.width = width;
                             win.setAttributes(params);
                             break;

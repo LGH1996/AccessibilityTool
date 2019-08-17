@@ -20,6 +20,7 @@ public class ScreenLightness {
     private Context context;
     private WindowManager windowManager;
     private WindowManager.LayoutParams params;
+    private Window win;
     private ImageView imageView;
     private SharedPreferences sharedPreferences;
     private int argb;
@@ -58,36 +59,35 @@ public class ScreenLightness {
         SeekBar seekBar_G = view.findViewById(R.id.seekBar_G);
         SeekBar seekBar_B = view.findViewById(R.id.seekBar_B);
         SeekBar seekBar_A = view.findViewById(R.id.seekBar_A);
+        seekBar_R.setProgress(Color.red(argb));
+        seekBar_G.setProgress(Color.green(argb));
+        seekBar_B.setProgress(Color.blue(argb));
+        seekBar_A.setProgress(Color.alpha(argb));
         ScreenLightness.HandleSeekBar handleSeekBar = new ScreenLightness.HandleSeekBar();
         seekBar_R.setOnSeekBarChangeListener(handleSeekBar);
         seekBar_G.setOnSeekBarChangeListener(handleSeekBar);
         seekBar_B.setOnSeekBarChangeListener(handleSeekBar);
         seekBar_A.setOnSeekBarChangeListener(handleSeekBar);
-        seekBar_R.setProgress(Color.red(argb));
-        seekBar_G.setProgress(Color.green(argb));
-        seekBar_B.setProgress(Color.blue(argb));
-        seekBar_A.setProgress(Color.alpha(argb));
         AlertDialog dialog = new AlertDialog.Builder(context).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface dialog) {
                 sharedPreferences.edit().putInt(ARGB, argb).apply();
             }
         }).create();
-        Window win = dialog.getWindow();
+        win = dialog.getWindow();
         win.setBackgroundDrawableResource(R.drawable.dialogbackground);
         win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-        WindowManager.LayoutParams params = win.getAttributes();
         win.setDimAmount(0);
         dialog.show();
+        WindowManager.LayoutParams win_params = win.getAttributes();
         DisplayMetrics metrics = new DisplayMetrics();
         windowManager.getDefaultDisplay().getMetrics(metrics);
-        params.width = (metrics.widthPixels / 6) * 5;
-        params.height = metrics.heightPixels / 2;
-        win.setAttributes(params);
+        win_params.width = (metrics.widthPixels / 6) * 5;
+        win_params.height = metrics.heightPixels / 2;
+        win.setAttributes(win_params);
     }
 
     class HandleSeekBar implements SeekBar.OnSeekBarChangeListener {
-
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
             switch (seekBar.getId()) {
@@ -112,12 +112,12 @@ public class ScreenLightness {
 
         @Override
         public void onStartTrackingTouch(SeekBar seekBar) {
-
+            win.setBackgroundDrawableResource(R.drawable.transparent_dialog);
         }
 
         @Override
         public void onStopTrackingTouch(SeekBar seekBar) {
-
+            win.setBackgroundDrawableResource(R.drawable.dialogbackground);
         }
     }
 }
