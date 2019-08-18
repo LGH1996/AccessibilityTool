@@ -13,6 +13,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Configuration;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -615,6 +616,25 @@ public class MyAccessibilityService extends AccessibilityService {
         } catch (Throwable e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        try {
+            if (control_lock) {
+                switch (newConfig.orientation) {
+                    case Configuration.ORIENTATION_PORTRAIT:
+                        screenLock.showLockFloat();
+                        break;
+                    case Configuration.ORIENTATION_LANDSCAPE:
+                        screenLock.dismiss();
+                        break;
+                }
+            }
+        }catch (Throwable e){
+            e.printStackTrace();
         }
     }
 

@@ -2,15 +2,43 @@ package com.lgh.accessibilitytool;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.SystemClock;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.ResolveInfo;
 import android.view.KeyEvent;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class MediaButtonControl {
-    private static String TAG = "VOLUME";
-    Context context;
+
+   private Context context;
+   private Set<String> music_set;
 
     public MediaButtonControl(Context context) {
         this.context = context;
+        List<ResolveInfo> list = context.getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_MEDIA_BUTTON), 0);
+        music_set = new HashSet<>();
+        for (ResolveInfo e : list) {
+            ApplicationInfo applicationInfo = e.activityInfo.applicationInfo;
+            if ((applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM) {
+                music_set.add(applicationInfo.packageName);
+            }
+        }
+    }
+
+    private void sendMediaButton(int keycode) {
+        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+        KeyEvent downEvent = new KeyEvent(KeyEvent.ACTION_DOWN, keycode);
+        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
+        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+        KeyEvent upEvent = new KeyEvent(KeyEvent.ACTION_UP, keycode);
+        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
+        for (String e : music_set) {
+            downIntent.setPackage(e);
+            context.sendOrderedBroadcast(downIntent, null);
+            upIntent.setPackage(e);
+            context.sendOrderedBroadcast(upIntent, null);
+        }
     }
 
     /**
@@ -18,41 +46,20 @@ public class MediaButtonControl {
      * 暂停
      */
     public void play_pause_Music() {
-        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent downEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, 1);
-        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
-        context.sendOrderedBroadcast(downIntent, null);
-        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent upEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, 1);
-        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
-        context.sendOrderedBroadcast(upIntent, null);
+        sendMediaButton(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
     }
 
     /**
      * 上一曲
      */
     public void previousMusic() {
-        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent downEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PREVIOUS, 1);
-        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
-        context.sendOrderedBroadcast(downIntent, null);
-        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent upEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PREVIOUS, 1);
-        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
-        context.sendOrderedBroadcast(upIntent, null);
+        sendMediaButton(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
     }
 
     /**
      * 下一曲
      */
     public void nextMusic() {
-        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent downEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT, 1);
-        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
-        context.sendOrderedBroadcast(downIntent, null);
-        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        KeyEvent upEvent = new KeyEvent(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_NEXT, 1);
-        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
-        context.sendOrderedBroadcast(upIntent, null);
+        sendMediaButton(KeyEvent.KEYCODE_MEDIA_NEXT);
     }
 }
