@@ -16,14 +16,7 @@ public class MediaButtonControl {
 
     public MediaButtonControl(Context context) {
         this.context = context;
-        List<ResolveInfo> list = context.getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_MEDIA_BUTTON), 0);
-        music_set = new HashSet<>();
-        for (ResolveInfo e : list) {
-            ApplicationInfo applicationInfo = e.activityInfo.applicationInfo;
-            if ((applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM) {
-                music_set.add(applicationInfo.packageName);
-            }
-        }
+        updateMusicSet();
     }
 
     private void sendMediaButton(int keycode) {
@@ -35,9 +28,20 @@ public class MediaButtonControl {
         upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
         for (String e : music_set) {
             downIntent.setPackage(e);
-            context.sendOrderedBroadcast(downIntent, null);
+            context.sendOrderedBroadcast(downIntent,null);
             upIntent.setPackage(e);
-            context.sendOrderedBroadcast(upIntent, null);
+            context.sendOrderedBroadcast(upIntent,null);
+        }
+    }
+
+    public void updateMusicSet(){
+        music_set = new HashSet<>();
+        List<ResolveInfo> list = context.getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_MEDIA_BUTTON), 0);
+        for (ResolveInfo e : list) {
+            ApplicationInfo applicationInfo = e.activityInfo.applicationInfo;
+            if ((applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM) {
+                music_set.add(applicationInfo.packageName);
+            }
         }
     }
 

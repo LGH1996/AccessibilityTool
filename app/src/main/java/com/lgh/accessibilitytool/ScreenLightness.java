@@ -38,7 +38,7 @@ public class ScreenLightness {
         params.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
         params.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         params.format = PixelFormat.TRANSPARENT;
-        params.gravity = Gravity.FILL_HORIZONTAL | Gravity.FILL_VERTICAL;
+        params.gravity = Gravity.FILL;
         params.alpha = 1f;
         imageView = new ImageView(context);
         imageView.setBackgroundColor(argb);
