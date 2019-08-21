@@ -124,7 +124,7 @@ public class MyAccessibilityService extends AccessibilityService {
             switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
                     String str = event.getPackageName().toString();
-                    if (!(str.equals(old_pac) || event.getClassName().toString().startsWith("android.widget.") || pac_system.contains(str))) {
+                    if (!(str.equals(old_pac) || pac_system.contains(str))) {
                         old_pac = str;
                         if (pac_home.contains(str)) break;
                         asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
@@ -676,6 +676,7 @@ public class MyAccessibilityService extends AccessibilityService {
         for (InputMethodInfo e : inputMethodInfoList) {
             pac_input.add(e.getPackageName());
         }
+        pac_system.add(getPackageName());
         pac_system.addAll(pac_input);
         pac_system.removeAll(pac_home);
     }
