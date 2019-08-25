@@ -3,6 +3,7 @@ package com.lgh.accessibilitytool;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.view.KeyEvent;
 import java.util.HashSet;
@@ -36,7 +37,7 @@ public class MediaButtonControl {
 
     public void updateMusicSet(){
         music_set = new HashSet<>();
-        List<ResolveInfo> list = context.getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_MEDIA_BUTTON), 0);
+        List<ResolveInfo> list = context.getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_MEDIA_BUTTON), PackageManager.MATCH_ALL);
         for (ResolveInfo e : list) {
             ApplicationInfo applicationInfo = e.activityInfo.applicationInfo;
             if ((applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM) {
