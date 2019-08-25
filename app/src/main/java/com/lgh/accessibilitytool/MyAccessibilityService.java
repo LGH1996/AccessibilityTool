@@ -126,7 +126,6 @@ public class MyAccessibilityService extends AccessibilityService {
                     String str = event.getPackageName().toString();
                     if (!str.equals(old_pac)) {
                         if (pac_launch.contains(str)) {
-                            Toast.makeText(this, "TYPE_WINDOW_STATE_CHANGED", Toast.LENGTH_SHORT).show();
                             asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                             setServiceInfo(asi);
                             is_state_change = true;
@@ -134,7 +133,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             old_pac = str;
                             findSkipButton(event);
                             if (future != null)
-                                future.cancel(true);
+                                future.cancel(false);
                             future = executorService.schedule(new Runnable() {
                                 @Override
                                 public void run() {
@@ -669,6 +668,10 @@ public class MyAccessibilityService extends AccessibilityService {
         win.setAttributes(params);
     }
 
+    /**
+     * 在安装卸载软件时触发调用，
+     * 更新相关包名的集合
+     */
     private void updatePackage(){
 
         Intent intent;
@@ -722,12 +725,11 @@ public class MyAccessibilityService extends AccessibilityService {
             }
         }
         if (!list.isEmpty() || win_state_count >= 20) {
-            Toast.makeText(this,String.valueOf(win_state_count),Toast.LENGTH_SHORT).show();
             asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
             setServiceInfo(asi);
             is_state_change = false;
             if (future != null)
-                future.cancel(true);
+                future.cancel(false);
         }
         win_state_count++;
     }
