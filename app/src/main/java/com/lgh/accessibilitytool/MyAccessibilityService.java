@@ -437,16 +437,15 @@ public class MyAccessibilityService extends AccessibilityService {
             public boolean onLongClick(View v) {
                 View view = inflater.inflate(R.layout.view_select, null);
                 ListView listView = view.findViewById(R.id.listview);
-                final List<ApplicationInfo> list = packageManager.getInstalledApplications(0);
+                final List<ResolveInfo> list = packageManager.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),PackageManager.MATCH_ALL);
                 final ArrayList<String> pac_name = new ArrayList<>();
                 final ArrayList<String> pac_label = new ArrayList<>();
                 final ArrayList<Drawable> drawables = new ArrayList<>();
-                for (ApplicationInfo e : list) {
-                    if ((e.flags & ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM) {
-                        pac_name.add(e.packageName);
-                        pac_label.add(packageManager.getApplicationLabel(e).toString());
-                        drawables.add(e.loadIcon(packageManager));
-                    }
+                for (ResolveInfo e : list) {
+                    ApplicationInfo info=e.activityInfo.applicationInfo;
+                    pac_name.add(info.packageName);
+                    pac_label.add(packageManager.getApplicationLabel(info).toString());
+                    drawables.add(info.loadIcon(packageManager));
                 }
                 BaseAdapter baseAdapter = new BaseAdapter() {
                     @Override
