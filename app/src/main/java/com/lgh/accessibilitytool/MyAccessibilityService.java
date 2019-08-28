@@ -119,7 +119,7 @@ public class MyAccessibilityService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-//        Log.i(TAG,AccessibilityEvent.eventTypeToString(event.getEventType())+"|"+event.getPackageName()+"|"+event.getClassName()+"|"+win_state_count);
+//        Log.i(TAG,AccessibilityEvent.eventTypeToString(event.getEventType())+"|"+event.getPackageName()+"|"+event.getClassName());
         try {
             switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
@@ -131,9 +131,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             is_state_change = true;
                             win_state_count = 0;
                             old_pac = str;
-                            findSkipButton(event);
-                            if (future != null)
-                                future.cancel(false);
+                            future.cancel(false);
                             future = executorService.schedule(new Runnable() {
                                 @Override
                                 public void run() {
@@ -143,13 +141,26 @@ public class MyAccessibilityService extends AccessibilityService {
                                 }
                             }, 8000, TimeUnit.MILLISECONDS);
                         }else if (pac_system.contains(str)){
-                            old_pac=str;
+                           if (is_state_change) {
+                               asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+                               setServiceInfo(asi);
+                               is_state_change = false;
+                               future.cancel(false);
+                           }
+                           old_pac=str;
                         }
+                    }
+                    if (is_state_change && str.equals(old_pac)){
+                        findSkipButton(getRootInActiveWindow());
                     }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
                     if (is_state_change && !event.getPackageName().equals("com.android.systemui")) {
-                        findSkipButton(event);
+                        if (win_state_count <= 4){
+                            findSkipButton(getRootInActiveWindow());
+                        }else {
+                            findSkipButton(event.getSource());
+                        }
                     }
                     break;
                 case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
@@ -202,8 +213,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             break;
                         case KeyEvent.ACTION_UP:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> KeyEvent.ACTION_UP");
-                            if (future != null)
-                                future.cancel(false);
+                            future.cancel(false);
                             is_release_up = true;
                             if (!double_press && System.currentTimeMillis() - star_up < 800) {
                                 audioManager.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
@@ -239,8 +249,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             break;
                         case KeyEvent.ACTION_UP:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> KeyEvent.ACTION_UP");
-                            if (future != null)
-                                future.cancel(false);
+                            future.cancel(false);
                             is_release_down = true;
                             if (!double_press && System.currentTimeMillis() - star_down < 800) {
                                 audioManager.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
@@ -332,6 +341,10 @@ public class MyAccessibilityService extends AccessibilityService {
         IntentFilter filter_screen=new IntentFilter();
         filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screenOnReceiver,filter_screen);
+        future=executorService.schedule(new Runnable() {
+            @Override
+            public void run() {}
+        }, 0, TimeUnit.MILLISECONDS);
         handler = new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
@@ -709,10 +722,8 @@ public class MyAccessibilityService extends AccessibilityService {
 
     /**
      * 用于启动界面查找“跳过”的控件
-     * @param event
      */
-    private void findSkipButton(AccessibilityEvent event) {
-        AccessibilityNodeInfo nodeInfo = win_state_count <= 2 ? getRootInActiveWindow() : event.getSource();
+    private void findSkipButton(AccessibilityNodeInfo nodeInfo) {
         if (nodeInfo == null) return;
         List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText("跳过");
         for (AccessibilityNodeInfo e : list) {
@@ -724,12 +735,11 @@ public class MyAccessibilityService extends AccessibilityService {
                 }
             }
         }
-        if (!list.isEmpty() || win_state_count >= 20) {
+        if (!list.isEmpty() || win_state_count >= 25) {
             asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
             setServiceInfo(asi);
             is_state_change = false;
-            if (future != null)
-                future.cancel(false);
+            future.cancel(false);
         }
         win_state_count++;
     }
