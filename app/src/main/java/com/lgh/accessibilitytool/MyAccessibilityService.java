@@ -48,6 +48,7 @@ import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -81,7 +82,7 @@ public class MyAccessibilityService extends AccessibilityService {
     private AudioManager audioManager;
     private PackageManager packageManager;
     private Vibrator vibrator;
-    private Set<String> pac_msg, pac_launch,pac_system;
+    private Set<String> pac_msg, pac_launch, pac_system;
     private AccessibilityServiceInfo asi;
     private String old_pac;
     private WindowManager windowManager;
@@ -140,25 +141,25 @@ public class MyAccessibilityService extends AccessibilityService {
                                     is_state_change = false;
                                 }
                             }, 8000, TimeUnit.MILLISECONDS);
-                        }else if (pac_system.contains(str)){
-                           if (is_state_change) {
-                               asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                               setServiceInfo(asi);
-                               is_state_change = false;
-                               future.cancel(false);
-                           }
-                           old_pac=str;
+                        } else if (pac_system.contains(str)) {
+                            old_pac = str;
+                            if (is_state_change) {
+                                asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+                                setServiceInfo(asi);
+                                is_state_change = false;
+                                future.cancel(false);
+                            }
                         }
                     }
-                    if (is_state_change && str.equals(old_pac)){
+                    if (is_state_change && str.equals(old_pac)) {
                         findSkipButton(getRootInActiveWindow());
                     }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
                     if (is_state_change && !event.getPackageName().equals("com.android.systemui")) {
-                        if (win_state_count <= 4){
+                        if (win_state_count <= 4) {
                             findSkipButton(getRootInActiveWindow());
-                        }else {
+                        } else {
                             findSkipButton(event.getSource());
                         }
                     }
@@ -281,7 +282,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         break;
                 }
             }
-        }catch (Throwable e){
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -291,7 +292,7 @@ public class MyAccessibilityService extends AccessibilityService {
         try {
             unregisterReceiver(installReceiver);
             unregisterReceiver(screenOnReceiver);
-        }catch (Throwable e){
+        } catch (Throwable e) {
             e.printStackTrace();
         }
         return super.onUnbind(intent);
@@ -304,7 +305,7 @@ public class MyAccessibilityService extends AccessibilityService {
     /**
      * 初始化各种数据
      */
-    private void initializeData(){
+    private void initializeData() {
         is_release_up = true;
         is_release_down = true;
         is_state_change = false;
@@ -333,17 +334,18 @@ public class MyAccessibilityService extends AccessibilityService {
         asi.flags = sharedPreferences.getInt(FLAGS, asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
         setServiceInfo(asi);
         updatePackage();
-        IntentFilter filter_install=new IntentFilter();
+        IntentFilter filter_install = new IntentFilter();
         filter_install.addAction(Intent.ACTION_PACKAGE_ADDED);
         filter_install.addAction(Intent.ACTION_PACKAGE_REMOVED);
         filter_install.addDataScheme("package");
-        registerReceiver(installReceiver,filter_install);
-        IntentFilter filter_screen=new IntentFilter();
+        registerReceiver(installReceiver, filter_install);
+        IntentFilter filter_screen = new IntentFilter();
         filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
-        registerReceiver(screenOnReceiver,filter_screen);
-        future=executorService.schedule(new Runnable() {
+        registerReceiver(screenOnReceiver, filter_screen);
+        future = executorService.schedule(new Runnable() {
             @Override
-            public void run() {}
+            public void run() {
+            }
         }, 0, TimeUnit.MILLISECONDS);
         handler = new Handler(new Handler.Callback() {
             @Override
@@ -360,7 +362,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         mediaButtonControl.updateMusicSet();
                         break;
                     case 0x03:
-                        old_pac="ScreenOff PackageName";
+                        old_pac = "ScreenOff PackageName";
                         break;
                 }
                 return true;
@@ -371,7 +373,7 @@ public class MyAccessibilityService extends AccessibilityService {
     /**
      * 用于设置的主要UI界面
      */
-    private void mainUI(){
+    private void mainUI() {
         DisplayMetrics metrics = new DisplayMetrics();
         windowManager.getDefaultDisplay().getMetrics(metrics);
         final ComponentName componentName = new ComponentName(MyAccessibilityService.this, MyDeviceAdminReceiver.class);
@@ -437,12 +439,12 @@ public class MyAccessibilityService extends AccessibilityService {
             public boolean onLongClick(View v) {
                 View view = inflater.inflate(R.layout.view_select, null);
                 ListView listView = view.findViewById(R.id.listview);
-                final List<ResolveInfo> list = packageManager.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),PackageManager.MATCH_ALL);
+                final List<ResolveInfo> list = packageManager.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), PackageManager.MATCH_ALL);
                 final ArrayList<String> pac_name = new ArrayList<>();
                 final ArrayList<String> pac_label = new ArrayList<>();
                 final ArrayList<Drawable> drawables = new ArrayList<>();
                 for (ResolveInfo e : list) {
-                    ApplicationInfo info=e.activityInfo.applicationInfo;
+                    ApplicationInfo info = e.activityInfo.applicationInfo;
                     pac_name.add(info.packageName);
                     pac_label.add(packageManager.getApplicationLabel(info).toString());
                     drawables.add(info.loadIcon(packageManager));
@@ -684,29 +686,29 @@ public class MyAccessibilityService extends AccessibilityService {
      * 在安装卸载软件时触发调用，
      * 更新相关包名的集合
      */
-    private void updatePackage(){
+    private void updatePackage() {
 
         Intent intent;
         List<ResolveInfo> ResolveInfoList;
         pac_system = new HashSet<>();
         pac_launch = new HashSet<>();
-        intent=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        ResolveInfoList=packageManager.queryIntentActivities(intent,PackageManager.MATCH_ALL);
+        intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
         for (ResolveInfo e : ResolveInfoList) {
             if ((e.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == ApplicationInfo.FLAG_SYSTEM) {
                 pac_system.add(e.activityInfo.packageName);
-            }else {
+            } else {
                 pac_launch.add(e.activityInfo.packageName);
             }
         }
-        List<String> pac_home=new ArrayList<>();
+        List<String> pac_home = new ArrayList<>();
         intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
         ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
         for (ResolveInfo e : ResolveInfoList) {
             pac_home.add(e.activityInfo.packageName);
         }
 
-        List<String> pac_input=new ArrayList<>();
+        List<String> pac_input = new ArrayList<>();
         List<InputMethodInfo> inputMethodInfoList = ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).getInputMethodList();
         for (InputMethodInfo e : inputMethodInfoList) {
             pac_input.add(e.getPackageName());
@@ -734,7 +736,7 @@ public class MyAccessibilityService extends AccessibilityService {
                 }
             }
         }
-        if (!list.isEmpty() || win_state_count >= 25) {
+        if (!list.isEmpty() || win_state_count >= 50) {
             asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
             setServiceInfo(asi);
             is_state_change = false;
