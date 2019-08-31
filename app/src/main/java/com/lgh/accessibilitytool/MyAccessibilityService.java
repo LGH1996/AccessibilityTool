@@ -48,7 +48,6 @@ import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -152,16 +151,12 @@ public class MyAccessibilityService extends AccessibilityService {
                         }
                     }
                     if (is_state_change && str.equals(old_pac)) {
-                        findSkipButton(getRootInActiveWindow());
+                        findSkipButton(event.getSource());
                     }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
                     if (is_state_change && !event.getPackageName().equals("com.android.systemui")) {
-                        if (win_state_count <= 4) {
-                            findSkipButton(getRootInActiveWindow());
-                        } else {
-                            findSkipButton(event.getSource());
-                        }
+                        findSkipButton(event.getSource());
                     }
                     break;
                 case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
