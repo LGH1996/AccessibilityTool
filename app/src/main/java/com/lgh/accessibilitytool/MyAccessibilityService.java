@@ -157,7 +157,7 @@ public class MyAccessibilityService extends AccessibilityService {
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
                     if (is_state_change && !event.getPackageName().equals("com.android.systemui")) {
-                        if (win_state_count <= 4) {
+                        if (win_state_count <= 5) {
                             findSkipButton(getRootInActiveWindow());
                         } else {
                             findSkipButton(event.getSource());
@@ -736,7 +736,7 @@ public class MyAccessibilityService extends AccessibilityService {
                 }
             }
         }
-        if (!list.isEmpty() || win_state_count >= 50) {
+        if (!list.isEmpty() || win_state_count >= 25) {
             asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
             setServiceInfo(asi);
             is_state_change = false;
