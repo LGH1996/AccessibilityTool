@@ -3,84 +3,96 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:gravity="center"
+    android:orientation="vertical"
     android:paddingStart="25dp"
-    android:paddingEnd="25dp"
     android:paddingTop="10dp"
-    android:orientation="vertical">
-        <ImageView
-            android:layout_width="match_parent"
-            android:layout_height="1px"
-            android:src="@color/deviderline" />
-        <Switch
-            android:id="@+id/skip_advertising"
-            android:layout_height="match_parent"
-            android:layout_width="match_parent"
-            android:checked="true"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp"
-            android:layout_weight="1"
-            android:hint="跳过启动广告"
-            android:textColorHint="#ff000000" />
-        <ImageView
-            android:layout_width="match_parent"
-            android:layout_height="1px"
-            android:src="@color/deviderline" />
-        <Switch
-            android:id="@+id/volume_control"
-            android:layout_height="match_parent"
-            android:layout_width="match_parent"
-            android:checked="true"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp"
-            android:layout_weight="1"
-            android:hint="音量键切音频"
-            android:textColorHint="#ff000000" />
-        <ImageView
-            android:layout_width="match_parent"
-            android:layout_height="1px"
-            android:src="@color/deviderline" />
-        <Switch
-            android:id="@+id/record_message"
-            android:layout_height="match_parent"
-            android:layout_width="match_parent"
-            android:checked="true"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp"
-            android:layout_weight="1"
-            android:hint="记录通知消息"
-            android:textColorHint="#ff000000" />
+    android:paddingEnd="25dp">
+
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
         android:src="@color/deviderline" />
+
+    <Switch
+        android:id="@+id/skip_advertising"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_weight="1"
+        android:checked="true"
+        android:hint="跳过启动广告"
+        android:textColorHint="#ff000000" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:src="@color/deviderline" />
+
+    <Switch
+        android:id="@+id/volume_control"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_weight="1"
+        android:checked="true"
+        android:hint="音量键切音频"
+        android:textColorHint="#ff000000" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:src="@color/deviderline" />
+
+    <Switch
+        android:id="@+id/record_message"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_weight="1"
+        android:checked="true"
+        android:hint="记录通知消息"
+        android:textColorHint="#ff000000" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:src="@color/deviderline" />
+
     <Switch
         android:id="@+id/screen_lightness"
-        android:layout_height="match_parent"
         android:layout_width="match_parent"
-        android:checked="true"
+        android:layout_height="match_parent"
         android:layout_marginTop="10dp"
         android:layout_marginBottom="10dp"
         android:layout_weight="1"
+        android:checked="true"
         android:hint="调节屏幕亮度"
         android:textColorHint="#ff000000" />
+
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
         android:src="@color/deviderline" />
+
     <Switch
         android:id="@+id/screen_lock"
-        android:layout_height="match_parent"
         android:layout_width="match_parent"
-        android:checked="true"
+        android:layout_height="match_parent"
         android:layout_marginTop="10dp"
         android:layout_marginBottom="10dp"
         android:layout_weight="1"
+        android:checked="true"
         android:hint="双击顶角锁屏"
         android:textColorHint="#ff000000" />
+
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
         android:src="@color/deviderline" />
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -88,36 +100,40 @@
         android:layout_marginBottom="20dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
+
         <TextView
             android:id="@+id/set"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
-            android:textColor="@drawable/text_click_color"
-            android:text="设置"/>
+            android:text="设置"
+            android:textColor="@drawable/text_click_color" />
+
         <TextView
             android:id="@+id/look"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toEndOf="@id/set"
             android:paddingStart="20dp"
-            android:textColor="@drawable/text_click_color"
-            android:text="查看记录"/>
+            android:text="查看记录"
+            android:textColor="@drawable/text_click_color" />
+
         <TextView
             android:id="@+id/cancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toStartOf="@id/sure"
             android:paddingEnd="20dp"
-            android:textColor="@drawable/text_click_color"
-            android:text="取消"/>
+            android:text="取消"
+            android:textColor="@drawable/text_click_color" />
+
         <TextView
             android:id="@+id/sure"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
-            android:textColor="@drawable/text_click_color"
-            android:text="确定"/>
+            android:text="确定"
+            android:textColor="@drawable/text_click_color" />
     </RelativeLayout>
 
 </LinearLayout>

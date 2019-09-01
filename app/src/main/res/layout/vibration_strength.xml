@@ -2,15 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:gravity="center"
     android:orientation="vertical"
     android:paddingTop="10dp"
-    android:paddingBottom="10dp"
-    android:gravity="center">
+    android:paddingBottom="10dp">
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColorHint="#ff000000"
-        android:hint="调节振动反馈强度"/>
+        android:hint="调节振动反馈强度"
+        android:textColorHint="#ff000000" />
+
     <SeekBar
         android:id="@+id/strength"
         android:layout_width="match_parent"

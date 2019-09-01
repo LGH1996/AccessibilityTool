@@ -1,24 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center">
-<ScrollView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_alignParentTop="true"
-    android:layout_above="@id/button"
-    android:scrollbars="none">
-    <EditText
-        android:id="@+id/editText"
+    android:gravity="center"
+    android:orientation="vertical">
+
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="15sp"
-        android:padding="10dp"
-        android:background="@null"
-        android:textCursorDrawable="@null"/>
-</ScrollView>
+        android:layout_above="@id/button"
+        android:layout_alignParentTop="true"
+        android:scrollbars="none">
+
+        <EditText
+            android:id="@+id/editText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@null"
+            android:padding="10dp"
+            android:textCursorDrawable="@null"
+            android:textSize="15sp" />
+    </ScrollView>
+
     <RelativeLayout
         android:id="@+id/button"
         android:layout_width="match_parent"
@@ -27,31 +30,34 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="10dp">
+
         <TextView
             android:id="@+id/empty"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
-            android:textSize="15sp"
+            android:text="清空"
             android:textColor="@drawable/text_click_color"
-            android:text="清空"/>
+            android:textSize="15sp" />
+
         <TextView
             android:id="@+id/cancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toStartOf="@id/sure"
-            android:textSize="15sp"
             android:paddingEnd="20dp"
+            android:text="取消"
             android:textColor="@drawable/text_click_color"
-            android:text="取消"/>
+            android:textSize="15sp" />
+
         <TextView
             android:id="@+id/sure"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
-            android:textSize="15sp"
+            android:text="确定"
             android:textColor="@drawable/text_click_color"
-            android:text="确定"/>
+            android:textSize="15sp" />
     </RelativeLayout>
 
 </RelativeLayout>
