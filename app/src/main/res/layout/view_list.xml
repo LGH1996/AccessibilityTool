@@ -15,7 +15,7 @@
             android:layout_width="match_parent"
             android:layout_height="1px"
             android:layout_alignParentTop="true"
-            android:background="@color/deviderline" />
+            android:background="@color/divideLine" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -37,8 +37,9 @@
                 android:layout_toEndOf="@+id/img"
                 android:gravity="center_vertical|start"
                 android:paddingLeft="15dp"
-                android:textColor="#ff000000"
-                android:textSize="20sp" />
+                android:singleLine="true"
+                android:textColor="@color/textColor"
+                android:textSize="15sp" />
 
             <CheckBox
                 android:id="@+id/check"
@@ -52,6 +53,6 @@
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="1px"
-            android:src="@color/deviderline" />
+            android:src="@color/divideLine" />
     </LinearLayout>
 </RelativeLayout>

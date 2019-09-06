@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#ffffffff"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <TextView
+        android:id="@+id/adv_desc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:lineSpacingExtra="5dp"
+        android:lines="3"
+        android:text="广告页的活动名和’跳过‘控件的坐标时自动跳过启动广告的关键，请在广告页中拖动上方准星对准’跳过‘控件，然后点击’保存‘以存储广告页相关的数据。"
+        android:textColor="@color/textColor"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/quit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="退出"
+            android:textColor="@color/textColor"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/adv_add"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="保存"
+            android:textColor="@color/textColor"
+            android:textSize="12sp" />
+    </LinearLayout>
+</LinearLayout>

@@ -42,7 +42,7 @@ public class ScreenLock {
             @Override
             public void onClick(View v) {
                 long end = System.currentTimeMillis();
-                if ((end - start) < 500) {
+                if ((end - start) < 800) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         MyAccessibilityService.handler.sendEmptyMessage(0x01);
                     } else {

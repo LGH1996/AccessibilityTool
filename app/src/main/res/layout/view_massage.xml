@@ -18,6 +18,7 @@
             android:layout_height="wrap_content"
             android:background="@null"
             android:padding="10dp"
+            android:textColor="@color/textColor"
             android:textCursorDrawable="@null"
             android:textSize="15sp" />
     </ScrollView>

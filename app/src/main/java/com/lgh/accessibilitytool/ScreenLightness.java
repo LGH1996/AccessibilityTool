@@ -36,9 +36,13 @@ public class ScreenLightness {
         if (imageView != null) return;
         params = new WindowManager.LayoutParams();
         params.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
-        params.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        params.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         params.format = PixelFormat.TRANSPARENT;
-        params.gravity = Gravity.FILL;
+        params.gravity = Gravity.START | Gravity.TOP;
+        DisplayMetrics metrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getRealMetrics(metrics);
+        params.width = metrics.widthPixels;
+        params.height = metrics.heightPixels;
         params.alpha = 1f;
         imageView = new ImageView(context);
         imageView.setBackgroundColor(argb);

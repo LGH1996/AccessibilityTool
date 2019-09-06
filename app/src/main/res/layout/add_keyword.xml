@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:id="@+id/keyList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:orientation="vertical"></LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="10dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/inputKet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="#aaffffff"
+            android:hint="关键字应按出现频率降序排列"
+            android:labelFor="@id/addKey"
+            android:maxLength="13"
+            android:paddingStart="15dp"
+            android:paddingTop="11dp"
+            android:paddingEnd="15dp"
+            android:paddingBottom="11dp"
+            android:singleLine="true"
+            android:textColor="@color/textColor"
+            android:textColorHint="@color/divideLine"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/addKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="3"
+            android:alpha="0.5"
+            android:text="添加"
+            android:textColor="@color/textColor"
+            android:textSize="12sp" />
+    </LinearLayout>
+</LinearLayout>

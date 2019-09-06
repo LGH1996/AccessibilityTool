@@ -11,7 +11,7 @@
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
-        android:src="@color/deviderline" />
+        android:src="@color/divideLine" />
 
     <Switch
         android:id="@+id/skip_advertising"
@@ -22,12 +22,12 @@
         android:layout_weight="1"
         android:checked="true"
         android:hint="跳过启动广告"
-        android:textColorHint="#ff000000" />
+        android:textColorHint="@color/textColor" />
 
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
-        android:src="@color/deviderline" />
+        android:src="@color/divideLine" />
 
     <Switch
         android:id="@+id/volume_control"
@@ -38,12 +38,12 @@
         android:layout_weight="1"
         android:checked="true"
         android:hint="音量键切音频"
-        android:textColorHint="#ff000000" />
+        android:textColorHint="@color/textColor" />
 
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
-        android:src="@color/deviderline" />
+        android:src="@color/divideLine" />
 
     <Switch
         android:id="@+id/record_message"
@@ -54,12 +54,12 @@
         android:layout_weight="1"
         android:checked="true"
         android:hint="记录通知消息"
-        android:textColorHint="#ff000000" />
+        android:textColorHint="@color/textColor" />
 
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
-        android:src="@color/deviderline" />
+        android:src="@color/divideLine" />
 
     <Switch
         android:id="@+id/screen_lightness"
@@ -70,12 +70,12 @@
         android:layout_weight="1"
         android:checked="true"
         android:hint="调节屏幕亮度"
-        android:textColorHint="#ff000000" />
+        android:textColorHint="@color/textColor" />
 
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
-        android:src="@color/deviderline" />
+        android:src="@color/divideLine" />
 
     <Switch
         android:id="@+id/screen_lock"
@@ -86,12 +86,12 @@
         android:layout_weight="1"
         android:checked="true"
         android:hint="双击顶角锁屏"
-        android:textColorHint="#ff000000" />
+        android:textColorHint="@color/textColor" />
 
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1px"
-        android:src="@color/deviderline" />
+        android:src="@color/divideLine" />
 
     <RelativeLayout
         android:layout_width="match_parent"
