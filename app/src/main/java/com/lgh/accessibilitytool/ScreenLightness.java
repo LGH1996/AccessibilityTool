@@ -57,6 +57,18 @@ public class ScreenLightness {
         }
     }
 
+    public void refreshOnOrientationChange(){
+        if (imageView != null){
+            DisplayMetrics metrics = new DisplayMetrics();
+            windowManager.getDefaultDisplay().getRealMetrics(metrics);
+            if (params.width != metrics.widthPixels || params.height != metrics.heightPixels) {
+                params.width = metrics.widthPixels;
+                params.height = metrics.heightPixels;
+                windowManager.updateViewLayout(imageView, params);
+            }
+        }
+    }
+
     public void showControlDialog() {
         View view = LayoutInflater.from(context).inflate(R.layout.screen_lightness_set, null);
         SeekBar seekBar_R = view.findViewById(R.id.seekBar_R);

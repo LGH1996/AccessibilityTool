@@ -315,6 +315,9 @@ public class MyAccessibilityService extends AccessibilityService {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         try {
+            if (control_lightness) {
+                screenLightness.refreshOnOrientationChange();
+            }
             if (control_lock) {
                 switch (newConfig.orientation) {
                     case Configuration.ORIENTATION_PORTRAIT:
@@ -430,6 +433,93 @@ public class MyAccessibilityService extends AccessibilityService {
                 return true;
             }
         });
+    }
+
+    /**
+     * 在安装卸载软件时触发调用，
+     * 更新相关包名的集合
+     */
+    private void updatePackage() {
+
+        Intent intent;
+        List<ResolveInfo> ResolveInfoList;
+        pac_system = new HashSet<>();
+        pac_launch = new HashSet<>();
+        Set<String> pac_tem = new HashSet<>();
+        intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
+        for (ResolveInfo e : ResolveInfoList) {
+            pac_launch.add(e.activityInfo.packageName);
+            if ((e.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == ApplicationInfo.FLAG_SYSTEM) {
+                pac_tem.add(e.activityInfo.packageName);
+            }
+        }
+        List<String> pac_home = new ArrayList<>();
+        intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+        ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
+        for (ResolveInfo e : ResolveInfoList) {
+            pac_home.add(e.activityInfo.packageName);
+        }
+
+        List<String> pac_input = new ArrayList<>();
+        List<InputMethodInfo> inputMethodInfoList = ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).getInputMethodList();
+        for (InputMethodInfo e : inputMethodInfoList) {
+            pac_input.add(e.getPackageName());
+        }
+        if (pac_white == null) {
+            pac_white = pac_tem;
+        }
+        pac_launch.removeAll(pac_white);
+        pac_launch.removeAll(pac_home);
+        pac_launch.removeAll(pac_input);
+        pac_launch.remove(getPackageName());
+        pac_system.addAll(pac_white);
+        pac_system.addAll(pac_home);
+        pac_system.add("com.android.packageinstaller");
+        pac_system.removeAll(pac_input);
+
+    }
+
+    /**
+     * 用于启动界面查找“跳过”的控件
+     */
+    private void findSkipButton(AccessibilityNodeInfo nodeInfo) {
+        if (nodeInfo == null) return;
+        for (int n = 0; n < keyWordList.size(); n++) {
+            List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText(keyWordList.get(n));
+            for (AccessibilityNodeInfo e : list) {
+                if (!e.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    if (!e.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                        Rect rect = new Rect();
+                        e.getBoundsInScreen(rect);
+                        click(rect.centerX(), rect.centerY(), 0, 20);
+                    }
+                }
+            }
+            if (!list.isEmpty() || win_state_count >= 25) {
+                asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+                setServiceInfo(asi);
+                is_state_change = false;
+                future.cancel(false);
+                break;
+            }
+        }
+        win_state_count++;
+    }
+
+    /**
+     * 模拟
+     * 点击
+     */
+    private boolean click(int X, int Y, long start_time, long duration) {
+        Path path = new Path();
+        path.moveTo(X, Y);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            GestureDescription.Builder builder = new GestureDescription.Builder().addStroke(new GestureDescription.StrokeDescription(path, start_time, duration));
+            return dispatchGesture(builder.build(), null, null);
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -1090,92 +1180,4 @@ public class MyAccessibilityService extends AccessibilityService {
         params.width = width;
         win.setAttributes(params);
     }
-
-    /**
-     * 在安装卸载软件时触发调用，
-     * 更新相关包名的集合
-     */
-    private void updatePackage() {
-
-        Intent intent;
-        List<ResolveInfo> ResolveInfoList;
-        pac_system = new HashSet<>();
-        pac_launch = new HashSet<>();
-        Set<String> pac_tem = new HashSet<>();
-        intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
-        for (ResolveInfo e : ResolveInfoList) {
-            pac_launch.add(e.activityInfo.packageName);
-            if ((e.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == ApplicationInfo.FLAG_SYSTEM) {
-                pac_tem.add(e.activityInfo.packageName);
-            }
-        }
-        List<String> pac_home = new ArrayList<>();
-        intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-        ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
-        for (ResolveInfo e : ResolveInfoList) {
-            pac_home.add(e.activityInfo.packageName);
-        }
-
-        List<String> pac_input = new ArrayList<>();
-        List<InputMethodInfo> inputMethodInfoList = ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).getInputMethodList();
-        for (InputMethodInfo e : inputMethodInfoList) {
-            pac_input.add(e.getPackageName());
-        }
-        if (pac_white == null) {
-            pac_white = pac_tem;
-        }
-        pac_launch.removeAll(pac_white);
-        pac_launch.removeAll(pac_home);
-        pac_launch.removeAll(pac_input);
-        pac_launch.remove(getPackageName());
-        pac_system.addAll(pac_white);
-        pac_system.addAll(pac_home);
-        pac_system.add("com.android.packageinstaller");
-        pac_system.removeAll(pac_input);
-
-    }
-
-    /**
-     * 用于启动界面查找“跳过”的控件
-     */
-    private void findSkipButton(AccessibilityNodeInfo nodeInfo) {
-        if (nodeInfo == null) return;
-        for (int n = 0; n < keyWordList.size(); n++) {
-            List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText(keyWordList.get(n));
-            for (AccessibilityNodeInfo e : list) {
-                if (!e.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                    if (!e.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                        Rect rect = new Rect();
-                        e.getBoundsInScreen(rect);
-                        click(rect.centerX(), rect.centerY(), 0, 20);
-                    }
-                }
-            }
-            if (!list.isEmpty() || win_state_count >= 25) {
-                asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                setServiceInfo(asi);
-                is_state_change = false;
-                future.cancel(false);
-                break;
-            }
-        }
-        win_state_count++;
-    }
-
-    /**
-     * 模拟
-     * 点击
-     */
-    private boolean click(int X, int Y, long start_time, long duration) {
-        Path path = new Path();
-        path.moveTo(X, Y);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            GestureDescription.Builder builder = new GestureDescription.Builder().addStroke(new GestureDescription.StrokeDescription(path, start_time, duration));
-            return dispatchGesture(builder.build(), null, null);
-        } else {
-            return false;
-        }
-    }
-
 }
