@@ -26,7 +26,6 @@ public class MainActivity extends Activity {
             if (MyAccessibilityService.handler != null) {
                 if (Settings.canDrawOverlays(context)) {
                     MyAccessibilityService.handler.sendEmptyMessage(0x00);
-                    Toast.makeText(context, "请确保允许应用后台运行", Toast.LENGTH_SHORT).show();
                 }
             } else {
                 Intent intent_abs = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);

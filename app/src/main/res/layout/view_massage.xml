@@ -20,7 +20,7 @@
             android:padding="10dp"
             android:textColor="@color/textColor"
             android:textCursorDrawable="@null"
-            android:textSize="15sp" />
+            android:textSize="12sp" />
     </ScrollView>
 
     <RelativeLayout
@@ -33,10 +33,20 @@
         android:padding="10dp">
 
         <TextView
-            android:id="@+id/empty"
+            android:id="@+id/choose"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
+            android:text="选择应用"
+            android:textColor="@drawable/text_click_color"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_toEndOf="@+id/choose"
             android:text="清空"
             android:textColor="@drawable/text_click_color"
             android:textSize="15sp" />
@@ -45,8 +55,8 @@
             android:id="@+id/cancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="20dp"
             android:layout_toStartOf="@id/sure"
-            android:paddingEnd="20dp"
             android:text="取消"
             android:textColor="@drawable/text_click_color"
             android:textSize="15sp" />

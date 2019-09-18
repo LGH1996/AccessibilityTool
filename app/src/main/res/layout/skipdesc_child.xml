@@ -120,7 +120,6 @@
                 android:layout_height="wrap_content"
                 android:layout_alignParentStart="true"
                 android:padding="1dp"
-                android:paddingEnd="30dp"
                 android:textColor="@color/textColor"
                 android:textSize="12sp" />
 
@@ -130,7 +129,7 @@
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/sure"
                 android:padding="1dp"
-                android:paddingEnd="30dp"
+                android:layout_marginEnd="20dp"
                 android:text="删除"
                 android:textColor="@drawable/text_click_color"
                 android:textSize="12sp" />

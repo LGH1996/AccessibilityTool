@@ -115,7 +115,7 @@
             android:layout_height="wrap_content"
             android:layout_toEndOf="@id/set"
             android:paddingStart="20dp"
-            android:text="查看记录"
+            android:text="帮助"
             android:textColor="@drawable/text_click_color" />
 
         <TextView

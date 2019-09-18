@@ -53,9 +53,10 @@ import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.reflect.Type;
@@ -85,7 +86,7 @@ public class MyAccessibilityService extends AccessibilityService {
     static String PAC_MSG = "pac_msg";
     static String VIBRATION_STRENGTH = "vibration_strength";
     static String ACTIVITY_MAP = "act_p";
-    static String WHITE_LIST = "white_list";
+    static String PAC_WHITE = "pac_white";
     static String KEY_WORD_LIST = "keyWordList";
     private boolean double_press;
     private boolean is_release_up, is_release_down;
@@ -98,7 +99,7 @@ public class MyAccessibilityService extends AccessibilityService {
     private AudioManager audioManager;
     private PackageManager packageManager;
     private Vibrator vibrator;
-    private Set<String> pac_msg, pac_launch, pac_system, pac_white;
+    private Set<String> pac_msg, pac_launch, pac_white, pac_home, pac_input;
     private ArrayList<String> keyWordList;
     private Map<String, SkipButtonDescribe> act_p;
     private AccessibilityServiceInfo asi;
@@ -159,7 +160,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                     is_state_change = false;
                                 }
                             }, 8000, TimeUnit.MILLISECONDS);
-                        } else if (pac_system.contains(str)) {
+                        } else if (pac_white.contains(str)) {
                             old_pac = str;
                             if (is_state_change) {
                                 asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
@@ -372,7 +373,7 @@ public class MyAccessibilityService extends AccessibilityService {
         screenOnReceiver = new MyScreenOffReceiver();
         vibration_strength = sharedPreferences.getInt(VIBRATION_STRENGTH, 50);
         pac_msg = sharedPreferences.getStringSet(PAC_MSG, new HashSet<String>());
-        pac_white = sharedPreferences.getStringSet(WHITE_LIST, null);
+        pac_white = sharedPreferences.getStringSet(PAC_WHITE, null);
         control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(this, MyDeviceAdminReceiver.class)));
         control_lightness = sharedPreferences.getBoolean(CONTROL_LIGHTNESS, false);
         if (control_lock) screenLock.showLockFloat();
@@ -443,8 +444,9 @@ public class MyAccessibilityService extends AccessibilityService {
 
         Intent intent;
         List<ResolveInfo> ResolveInfoList;
-        pac_system = new HashSet<>();
         pac_launch = new HashSet<>();
+        pac_home = new HashSet<>();
+        pac_input = new HashSet<>();
         Set<String> pac_tem = new HashSet<>();
         intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
         ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
@@ -454,29 +456,29 @@ public class MyAccessibilityService extends AccessibilityService {
                 pac_tem.add(e.activityInfo.packageName);
             }
         }
-        List<String> pac_home = new ArrayList<>();
         intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
         ResolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL);
         for (ResolveInfo e : ResolveInfoList) {
             pac_home.add(e.activityInfo.packageName);
         }
-
-        List<String> pac_input = new ArrayList<>();
         List<InputMethodInfo> inputMethodInfoList = ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).getInputMethodList();
         for (InputMethodInfo e : inputMethodInfoList) {
             pac_input.add(e.getPackageName());
         }
         if (pac_white == null) {
             pac_white = pac_tem;
+        } else if (pac_white.retainAll(pac_launch)) {
+            sharedPreferences.edit().putStringSet(PAC_WHITE, pac_white).apply();
+        }
+        if (pac_msg.retainAll(pac_launch)) {
+            sharedPreferences.edit().putStringSet(PAC_MSG, pac_msg).apply();
         }
         pac_launch.removeAll(pac_white);
         pac_launch.removeAll(pac_home);
         pac_launch.removeAll(pac_input);
-        pac_launch.remove(getPackageName());
-        pac_system.addAll(pac_white);
-        pac_system.addAll(pac_home);
-        pac_system.add("com.android.packageinstaller");
-        pac_system.removeAll(pac_input);
+        pac_white.addAll(pac_home);
+        pac_white.add("com.android.packageinstaller");
+        pac_white.removeAll(pac_input);
 
     }
 
@@ -553,7 +555,7 @@ public class MyAccessibilityService extends AccessibilityService {
             @Override
             public boolean onLongClick(View v) {
                 final View view = inflater.inflate(R.layout.skipdesc_parent, null);
-                final AlertDialog dialog = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).create();
+                final AlertDialog dialog_adv = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).create();
                 final LinearLayout parentView = view.findViewById(R.id.skip_desc);
                 Button addButton = view.findViewById(R.id.add);
                 Button chooseButton = view.findViewById(R.id.choose);
@@ -628,6 +630,8 @@ public class MyAccessibilityService extends AccessibilityService {
                         final ArrayList<Drawable> drawables = new ArrayList<>();
                         for (ResolveInfo e : list) {
                             ApplicationInfo info = e.activityInfo.applicationInfo;
+                            if (pac_home.contains(info.packageName) || pac_input.contains(info.packageName))
+                                continue;
                             pac_name.add(info.packageName);
                             pac_label.add(packageManager.getApplicationLabel(info).toString());
                             drawables.add(info.loadIcon(packageManager));
@@ -652,11 +656,8 @@ public class MyAccessibilityService extends AccessibilityService {
                             public View getView(int position, View convertView, ViewGroup parent) {
                                 ViewHolder holder;
                                 if (convertView == null) {
-                                    holder = new ViewHolder();
-                                    convertView = inflater.inflate(R.layout.view_list, null);
-                                    holder.textView = convertView.findViewById(R.id.name);
-                                    holder.imageView = convertView.findViewById(R.id.img);
-                                    holder.checkBox = convertView.findViewById(R.id.check);
+                                    convertView = inflater.inflate(R.layout.view_pac, null);
+                                    holder = new ViewHolder(convertView);
                                     convertView.setTag(holder);
                                 } else {
                                     holder = (ViewHolder) convertView.getTag();
@@ -671,39 +672,47 @@ public class MyAccessibilityService extends AccessibilityService {
                             @Override
                             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                                 CheckBox c = ((ViewHolder) view.getTag()).checkBox;
+                                String str = pac_name.get(position);
                                 if (c.isChecked()) {
-                                    pac_white.remove(pac_name.get(position));
+                                    pac_white.remove(str);
+                                    pac_launch.add(str);
                                     c.setChecked(false);
                                 } else {
-                                    pac_white.add(pac_name.get(position));
+                                    pac_white.add(str);
+                                    pac_launch.remove(str);
                                     c.setChecked(true);
                                 }
                             }
                         });
                         listView.setAdapter(baseAdapter);
-                        AlertDialog dialogChoose = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
+                        AlertDialog dialog_pac = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
                             @Override
                             public void onDismiss(DialogInterface dialog) {
-                                sharedPreferences.edit().putStringSet(WHITE_LIST, pac_white).apply();
-                                updatePackage();
+                                sharedPreferences.edit().putStringSet(PAC_WHITE, pac_white).apply();
                             }
                         }).create();
 
-                        Window win = dialogChoose.getWindow();
+                        Window win = dialog_pac.getWindow();
                         win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                         win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
                         win.setDimAmount(0);
-                        dialogChoose.show();
+                        dialog_pac.show();
                         WindowManager.LayoutParams params = win.getAttributes();
                         params.width = width;
                         win.setAttributes(params);
-                        dialog.dismiss();
+                        dialog_adv.dismiss();
                     }
 
                     class ViewHolder {
                         TextView textView;
                         ImageView imageView;
                         CheckBox checkBox;
+
+                        public ViewHolder(View v) {
+                            textView = v.findViewById(R.id.name);
+                            imageView = v.findViewById(R.id.img);
+                            checkBox = v.findViewById(R.id.check);
+                        }
                     }
                 });
 
@@ -757,7 +766,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             }
                         });
                         image.setOnTouchListener(new View.OnTouchListener() {
-                            int x = 0, y = 0;
+                            int x = 0, y = 0, width = aParams.width / 2, height = aParams.height / 2;
 
                             @Override
                             public boolean onTouch(View v, MotionEvent event) {
@@ -776,8 +785,8 @@ public class MyAccessibilityService extends AccessibilityService {
                                         windowManager.updateViewLayout(image, aParams);
                                         packageName = old_pac;
                                         className = cur_act;
-                                        pX = aParams.x + aParams.width / 2;
-                                        pY = aParams.y + aParams.height / 2;
+                                        pX = aParams.x + width;
+                                        pY = aParams.y + height;
                                         adv_desc.setText("包名：" + packageName + "\n" + "活动名：" + className + "\n" + "X坐标：" + pX + "    Y坐标：" + pY + "    点击周期：300ms(默认)");
                                         break;
                                     case MotionEvent.ACTION_UP:
@@ -807,7 +816,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         });
                         windowManager.addView(adv_view, bParams);
                         windowManager.addView(image, aParams);
-                        dialog.dismiss();
+                        dialog_adv.dismiss();
                     }
                 });
                 keyButton.setOnClickListener(new View.OnClickListener() {
@@ -817,7 +826,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         final LinearLayout layout = addKeyView.findViewById(R.id.keyList);
                         final EditText edit = addKeyView.findViewById(R.id.inputKet);
                         Button button = addKeyView.findViewById(R.id.addKey);
-                        AlertDialog addKeyDialog = new AlertDialog.Builder(MyAccessibilityService.this).setView(addKeyView).setOnDismissListener(new DialogInterface.OnDismissListener() {
+                        AlertDialog dialog_key = new AlertDialog.Builder(MyAccessibilityService.this).setView(addKeyView).setOnDismissListener(new DialogInterface.OnDismissListener() {
                             @Override
                             public void onDismiss(DialogInterface dialog) {
                                 String gJson = new Gson().toJson(keyWordList);
@@ -829,7 +838,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             public void onClick(View v) {
                                 final String input = edit.getText().toString();
                                 if (!input.isEmpty()) {
-                                    if (!keyWordList.contains(input)) {
+                                    if (!keyWordList.contains(input) && keyWordList.size() < 10) {
                                         final View itemView = inflater.inflate(R.layout.keyword_item, null);
                                         final TextView text = itemView.findViewById(R.id.keyName);
                                         TextView rm = itemView.findViewById(R.id.remove);
@@ -862,31 +871,31 @@ public class MyAccessibilityService extends AccessibilityService {
                                 }
                             });
                         }
-                        Window win = addKeyDialog.getWindow();
+                        Window win = dialog_key.getWindow();
                         win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                         win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                        win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+                        win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST);
                         win.setDimAmount(0);
-                        addKeyDialog.show();
+                        dialog_key.show();
                         WindowManager.LayoutParams params = win.getAttributes();
                         params.width = width;
                         win.setAttributes(params);
-                        dialog.dismiss();
+                        dialog_adv.dismiss();
                     }
                 });
-                dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                dialog_adv.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
                         String gJson = new Gson().toJson(act_p);
                         sharedPreferences.edit().putString(ACTIVITY_MAP, gJson).apply();
                     }
                 });
-                Window win = dialog.getWindow();
+                Window win = dialog_adv.getWindow();
                 win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                 win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
                 win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
                 win.setDimAmount(0);
-                dialog.show();
+                dialog_adv.show();
                 WindowManager.LayoutParams params = win.getAttributes();
                 params.width = width;
                 win.setAttributes(params);
@@ -915,17 +924,17 @@ public class MyAccessibilityService extends AccessibilityService {
                     public void onStopTrackingTouch(SeekBar seekBar) {
                     }
                 });
-                AlertDialog dialog = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
+                AlertDialog dialog_vol = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
                         sharedPreferences.edit().putInt(VIBRATION_STRENGTH, vibration_strength).apply();
                     }
                 }).create();
-                Window win = dialog.getWindow();
+                Window win = dialog_vol.getWindow();
                 win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                 win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
                 win.setDimAmount(0);
-                dialog.show();
+                dialog_vol.show();
                 WindowManager.LayoutParams params = win.getAttributes();
                 params.width = width;
                 win.setAttributes(params);
@@ -936,90 +945,158 @@ public class MyAccessibilityService extends AccessibilityService {
         switch_record_message.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                View view = inflater.inflate(R.layout.view_select, null);
-                ListView listView = view.findViewById(R.id.listView);
-                final List<ResolveInfo> list = packageManager.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), PackageManager.MATCH_ALL);
-                final ArrayList<String> pac_name = new ArrayList<>();
-                final ArrayList<String> pac_label = new ArrayList<>();
-                final ArrayList<Drawable> drawables = new ArrayList<>();
-                for (ResolveInfo e : list) {
-                    ApplicationInfo info = e.activityInfo.applicationInfo;
-                    pac_name.add(info.packageName);
-                    pac_label.add(packageManager.getApplicationLabel(info).toString());
-                    drawables.add(info.loadIcon(packageManager));
+                try {
+                    final View view = inflater.inflate(R.layout.view_massage, null);
+                    final AlertDialog dialog_message = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).create();
+                    final EditText textView = view.findViewById(R.id.editText);
+                    TextView but_choose = view.findViewById(R.id.choose);
+                    TextView but_empty = view.findViewById(R.id.empty);
+                    TextView but_cancel = view.findViewById(R.id.cancel);
+                    TextView but_sure = view.findViewById(R.id.sure);
+                    but_choose.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            View view = inflater.inflate(R.layout.view_select, null);
+                            ListView listView = view.findViewById(R.id.listView);
+                            final List<ResolveInfo> list = packageManager.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), PackageManager.MATCH_ALL);
+                            final ArrayList<String> pac_name = new ArrayList<>();
+                            final ArrayList<String> pac_label = new ArrayList<>();
+                            final ArrayList<Drawable> drawables = new ArrayList<>();
+                            for (ResolveInfo e : list) {
+                                ApplicationInfo info = e.activityInfo.applicationInfo;
+                                pac_name.add(info.packageName);
+                                pac_label.add(packageManager.getApplicationLabel(info).toString());
+                                drawables.add(info.loadIcon(packageManager));
+                            }
+                            BaseAdapter baseAdapter = new BaseAdapter() {
+                                @Override
+                                public int getCount() {
+                                    return pac_name.size();
+                                }
+
+                                @Override
+                                public Object getItem(int position) {
+                                    return position;
+                                }
+
+                                @Override
+                                public long getItemId(int position) {
+                                    return position;
+                                }
+
+                                @Override
+                                public View getView(int position, View convertView, ViewGroup parent) {
+                                    ViewHolder holder;
+                                    if (convertView == null) {
+                                        convertView = inflater.inflate(R.layout.view_pac, null);
+                                        holder = new ViewHolder(convertView);
+                                        convertView.setTag(holder);
+                                    } else {
+                                        holder = (ViewHolder) convertView.getTag();
+                                    }
+                                    holder.textView.setText(pac_label.get(position));
+                                    holder.imageView.setImageDrawable(drawables.get(position));
+                                    holder.checkBox.setChecked(pac_msg.contains(pac_name.get(position)));
+                                    return convertView;
+                                }
+                            };
+                            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                @Override
+                                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                                    CheckBox c = ((ViewHolder) view.getTag()).checkBox;
+                                    if (c.isChecked()) {
+                                        pac_msg.remove(pac_name.get(position));
+                                        c.setChecked(false);
+                                    } else {
+                                        pac_msg.add(pac_name.get(position));
+                                        c.setChecked(true);
+                                    }
+                                }
+                            });
+                            listView.setAdapter(baseAdapter);
+                            AlertDialog dialog_pac = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
+                                @Override
+                                public void onDismiss(DialogInterface dialog) {
+                                    sharedPreferences.edit().putStringSet(PAC_MSG, pac_msg).apply();
+                                }
+                            }).create();
+
+                            Window win = dialog_pac.getWindow();
+                            win.setBackgroundDrawableResource(R.drawable.dialogbackground);
+                            win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                            win.setDimAmount(0);
+                            dialog_pac.show();
+                            WindowManager.LayoutParams params = win.getAttributes();
+                            params.width = width;
+                            win.setAttributes(params);
+                            dialog_message.dismiss();
+                        }
+
+                        class ViewHolder {
+                            TextView textView;
+                            ImageView imageView;
+                            CheckBox checkBox;
+
+                            public ViewHolder(View v) {
+                                textView = v.findViewById(R.id.name);
+                                imageView = v.findViewById(R.id.img);
+                                checkBox = v.findViewById(R.id.check);
+                            }
+                        }
+                    });
+                    but_empty.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            textView.setText("");
+                        }
+                    });
+                    but_cancel.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            dialog_message.dismiss();
+                        }
+                    });
+                    but_sure.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            try {
+                                FileWriter writer = new FileWriter(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt", false);
+                                writer.write(textView.getText().toString());
+                                writer.close();
+                                dialog_message.dismiss();
+                            } catch (Throwable e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                    File file = new File(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt");
+                    if (file.exists()) {
+                        StringBuilder builder = new StringBuilder();
+                        Scanner scanner = new Scanner(file);
+                        while (scanner.hasNextLine()) {
+                            builder.append(scanner.nextLine() + "\n");
+                        }
+                        scanner.close();
+                        textView.setText(builder.toString());
+                        textView.setSelection(builder.length());
+                    } else {
+                        textView.setHint("当前文件内容为空，如果还没有选择要记录其通知的应用，请点击下方‘选择应用’进行勾选。");
+                    }
+                    Window win = dialog_message.getWindow();
+                    win.setBackgroundDrawableResource(R.drawable.dialogbackground);
+                    win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                    win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+                    win.setDimAmount(0);
+                    dialog_message.show();
+                    WindowManager.LayoutParams params = win.getAttributes();
+                    params.width = width;
+                    params.height = (height / 6) * 5;
+                    win.setAttributes(params);
+                    dialog_main.dismiss();
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
-                BaseAdapter baseAdapter = new BaseAdapter() {
-                    @Override
-                    public int getCount() {
-                        return pac_name.size();
-                    }
-
-                    @Override
-                    public Object getItem(int position) {
-                        return position;
-                    }
-
-                    @Override
-                    public long getItemId(int position) {
-                        return position;
-                    }
-
-                    @Override
-                    public View getView(int position, View convertView, ViewGroup parent) {
-                        ViewHolder holder;
-                        if (convertView == null) {
-                            holder = new ViewHolder();
-                            convertView = inflater.inflate(R.layout.view_list, null);
-                            holder.textView = convertView.findViewById(R.id.name);
-                            holder.imageView = convertView.findViewById(R.id.img);
-                            holder.checkBox = convertView.findViewById(R.id.check);
-                            convertView.setTag(holder);
-                        } else {
-                            holder = (ViewHolder) convertView.getTag();
-                        }
-                        holder.textView.setText(pac_label.get(position));
-                        holder.imageView.setImageDrawable(drawables.get(position));
-                        holder.checkBox.setChecked(pac_msg.contains(pac_name.get(position)));
-                        return convertView;
-                    }
-                };
-                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        CheckBox c = ((ViewHolder) view.getTag()).checkBox;
-                        if (c.isChecked()) {
-                            pac_msg.remove(pac_name.get(position));
-                            c.setChecked(false);
-                        } else {
-                            pac_msg.add(pac_name.get(position));
-                            c.setChecked(true);
-                        }
-                    }
-                });
-                listView.setAdapter(baseAdapter);
-                AlertDialog dialog = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
-                        sharedPreferences.edit().putStringSet(PAC_MSG, pac_msg).apply();
-                    }
-                }).create();
-
-                Window win = dialog.getWindow();
-                win.setBackgroundDrawableResource(R.drawable.dialogbackground);
-                win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                win.setDimAmount(0);
-                dialog.show();
-                WindowManager.LayoutParams params = win.getAttributes();
-                params.width = width;
-                win.setAttributes(params);
-                dialog_main.dismiss();
                 return true;
-            }
-
-            class ViewHolder {
-                TextView textView;
-                ImageView imageView;
-                CheckBox checkBox;
             }
         });
         switch_screen_lightness.setOnLongClickListener(new View.OnLongClickListener() {
@@ -1055,65 +1132,10 @@ public class MyAccessibilityService extends AccessibilityService {
         bt_look.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                try {
-                    File file = new File(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt");
-                    if (!file.exists()) {
-                        Toast.makeText(MyAccessibilityService.this, "当前文件记录为空", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    final View view = inflater.inflate(R.layout.view_massage, null);
-                    final AlertDialog dialog = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).create();
-                    final EditText textView = view.findViewById(R.id.editText);
-                    TextView but_empty = view.findViewById(R.id.empty);
-                    TextView but_cancel = view.findViewById(R.id.cancel);
-                    TextView but_sure = view.findViewById(R.id.sure);
-                    but_empty.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            textView.setText("");
-                        }
-                    });
-                    but_cancel.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            dialog.dismiss();
-                        }
-                    });
-                    but_sure.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            try {
-                                FileWriter writer = new FileWriter(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt", false);
-                                writer.write(textView.getText().toString());
-                                writer.close();
-                                dialog.dismiss();
-                            } catch (Throwable e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    });
-                    Scanner scanner = new Scanner(file);
-                    StringBuilder builder = new StringBuilder();
-                    while (scanner.hasNextLine()) {
-                        builder.append(scanner.nextLine() + "\n");
-                    }
-                    scanner.close();
-                    textView.setText(builder.toString());
-                    textView.setSelection(builder.length());
-                    Window win = dialog.getWindow();
-                    win.setBackgroundDrawableResource(R.drawable.dialogbackground);
-                    win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                    win.setDimAmount(0);
-                    dialog.show();
-                    WindowManager.LayoutParams params = win.getAttributes();
-                    params.width = width;
-                    params.height = (height / 6) * 5;
-                    win.setAttributes(params);
-                    dialog_main.dismiss();
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-
+                Intent intent = new Intent(MyAccessibilityService.this, HelpActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(intent);
+                dialog_main.dismiss();
             }
         });
         bt_cancel.setOnClickListener(new View.OnClickListener() {
