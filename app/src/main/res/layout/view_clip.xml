@@ -32,20 +32,10 @@
         android:padding="10dp">
 
         <TextView
-            android:id="@+id/choose"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:text="选择应用"
-            android:textColor="@drawable/text_click_color"
-            android:textSize="15sp" />
-
-        <TextView
             android:id="@+id/empty"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_toEndOf="@+id/choose"
+            android:layout_alignParentStart="true"
             android:text="清空"
             android:textColor="@drawable/text_click_color"
             android:textSize="15sp" />

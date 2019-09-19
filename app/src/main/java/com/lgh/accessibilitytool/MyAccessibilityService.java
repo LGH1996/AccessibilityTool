@@ -7,6 +7,8 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.admin.DevicePolicyManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -23,6 +25,7 @@ import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Vibrator;
@@ -81,6 +84,7 @@ public class MyAccessibilityService extends AccessibilityService {
     static String TAG = "MyAccessibilityService";
     static String CONTROL_LIGHTNESS = "control_lightness";
     static String CONTROL_LOCK = "control_lock";
+    static String RECORD_CLIP = "record_clip";
     static String EVENT_TYPES = "event_type";
     static String FLAGS = "flags";
     static String PAC_MSG = "pac_msg";
@@ -90,7 +94,7 @@ public class MyAccessibilityService extends AccessibilityService {
     static String KEY_WORD_LIST = "keyWordList";
     private boolean double_press;
     private boolean is_release_up, is_release_down;
-    private boolean control_lightness, control_lock, is_state_change;
+    private boolean control_lightness, control_lock, is_state_change, record_clip;
     private long star_up, star_down;
     private int win_state_count, create_num, connect_num, vibration_strength;
     private SharedPreferences sharedPreferences;
@@ -103,7 +107,7 @@ public class MyAccessibilityService extends AccessibilityService {
     private ArrayList<String> keyWordList;
     private Map<String, SkipButtonDescribe> act_p;
     private AccessibilityServiceInfo asi;
-    private String old_pac, cur_act;
+    private String old_pac, cur_act, savePath;
     private WindowManager windowManager;
     private DevicePolicyManager devicePolicyManager;
     private ScreenLightness screenLightness;
@@ -111,6 +115,8 @@ public class MyAccessibilityService extends AccessibilityService {
     private ScreenLock screenLock;
     private MyInstallReceiver installReceiver;
     private MyScreenOffReceiver screenOnReceiver;
+    private ClipboardManager clipboardManager;
+    private ClipboardManager.OnPrimaryClipChangedListener primaryClipChangedListener;
 
     @Override
     public void onCreate() {
@@ -215,7 +221,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         for (CharSequence s : list_msg)
                             builder.append("[" + s.toString().replaceAll("\\s", "") + "]");
                         builder.append("\n");
-                        FileWriter writer = new FileWriter(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt", true);
+                        FileWriter writer = new FileWriter(savePath + "/" + "NotificationMessageCache.txt", true);
                         writer.append(builder.toString());
                         writer.close();
                     }
@@ -339,6 +345,7 @@ public class MyAccessibilityService extends AccessibilityService {
         try {
             unregisterReceiver(installReceiver);
             unregisterReceiver(screenOnReceiver);
+            clipboardManager.removePrimaryClipChangedListener(primaryClipChangedListener);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -359,11 +366,13 @@ public class MyAccessibilityService extends AccessibilityService {
         double_press = false;
         old_pac = "Initialize PackageName";
         cur_act = "Initialize ClassName";
+        savePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).getAbsolutePath();
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         devicePolicyManager = (DevicePolicyManager) getSystemService(DEVICE_POLICY_SERVICE);
+        clipboardManager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         packageManager = getPackageManager();
         executorService = Executors.newSingleThreadScheduledExecutor();
         mediaButtonControl = new MediaButtonControl(this);
@@ -376,6 +385,7 @@ public class MyAccessibilityService extends AccessibilityService {
         pac_white = sharedPreferences.getStringSet(PAC_WHITE, null);
         control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(this, MyDeviceAdminReceiver.class)));
         control_lightness = sharedPreferences.getBoolean(CONTROL_LIGHTNESS, false);
+        record_clip = sharedPreferences.getBoolean(RECORD_CLIP, true);
         if (control_lock) screenLock.showLockFloat();
         if (control_lightness) screenLightness.showFloat();
         asi = getServiceInfo();
@@ -391,6 +401,32 @@ public class MyAccessibilityService extends AccessibilityService {
         IntentFilter filter_screen = new IntentFilter();
         filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screenOnReceiver, filter_screen);
+        primaryClipChangedListener = new ClipboardManager.OnPrimaryClipChangedListener() {
+            @Override
+            public void onPrimaryClipChanged() {
+                try {
+                    if (old_pac.equals(getPackageName())) return;
+                    ClipData clipData = clipboardManager.getPrimaryClip();
+                    if (clipData == null) return;
+                    StringBuilder builder = new StringBuilder();
+                    for (int n = 0; n < clipData.getItemCount(); n++) {
+                        ClipData.Item item = clipData.getItemAt(n);
+                        CharSequence str = item.getText();
+                        if (str == null) continue;
+                        builder.append(str.toString().replaceAll("\\s", ""));
+                    }
+                    builder.append("\n");
+                    FileWriter writer = new FileWriter(savePath + "/" + "ClipContentCache.txt", true);
+                    writer.append(builder.toString());
+                    writer.close();
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        if (record_clip) {
+            clipboardManager.addPrimaryClipChangedListener(primaryClipChangedListener);
+        }
         String aJson = sharedPreferences.getString(ACTIVITY_MAP, null);
         if (aJson != null) {
             Type type = new TypeToken<HashMap<String, SkipButtonDescribe>>() {
@@ -532,13 +568,13 @@ public class MyAccessibilityService extends AccessibilityService {
         windowManager.getDefaultDisplay().getRealMetrics(metrics);
         final ComponentName componentName = new ComponentName(MyAccessibilityService.this, MyDeviceAdminReceiver.class);
         final int width = (metrics.widthPixels / 6) * 5;
-        final int height = metrics.heightPixels;
         final LayoutInflater inflater = LayoutInflater.from(MyAccessibilityService.this);
         final View view_main = inflater.inflate(R.layout.main_dialog, null);
         final AlertDialog dialog_main = new AlertDialog.Builder(MyAccessibilityService.this).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_main).create();
         final Switch switch_skip_advertising = view_main.findViewById(R.id.skip_advertising);
         final Switch switch_volume_control = view_main.findViewById(R.id.volume_control);
         final Switch switch_record_message = view_main.findViewById(R.id.record_message);
+        final Switch switch_record_clip = view_main.findViewById(R.id.record_clip);
         final Switch switch_screen_lightness = view_main.findViewById(R.id.screen_lightness);
         final Switch switch_screen_lock = view_main.findViewById(R.id.screen_lock);
         TextView bt_set = view_main.findViewById(R.id.set);
@@ -548,6 +584,7 @@ public class MyAccessibilityService extends AccessibilityService {
         switch_skip_advertising.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
         switch_volume_control.setChecked((asi.flags & AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) == AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
         switch_record_message.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
+        switch_record_clip.setChecked(record_clip);
         switch_screen_lightness.setChecked(control_lightness);
         switch_screen_lock.setChecked(control_lock && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(componentName)));
 
@@ -1060,7 +1097,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         @Override
                         public void onClick(View v) {
                             try {
-                                FileWriter writer = new FileWriter(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt", false);
+                                FileWriter writer = new FileWriter(savePath + "/" + "NotificationMessageCache.txt", false);
                                 writer.write(textView.getText().toString());
                                 writer.close();
                                 dialog_message.dismiss();
@@ -1069,7 +1106,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             }
                         }
                     });
-                    File file = new File(getExternalCacheDir().getAbsolutePath() + "/" + "NotificationMessageCache.txt");
+                    File file = new File(savePath + "/" + "NotificationMessageCache.txt");
                     if (file.exists()) {
                         StringBuilder builder = new StringBuilder();
                         Scanner scanner = new Scanner(file);
@@ -1085,12 +1122,75 @@ public class MyAccessibilityService extends AccessibilityService {
                     Window win = dialog_message.getWindow();
                     win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                     win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                    win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+                    win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
                     win.setDimAmount(0);
                     dialog_message.show();
                     WindowManager.LayoutParams params = win.getAttributes();
-                    params.width = width;
-                    params.height = (height / 6) * 5;
+                    params.width = metrics.widthPixels;
+                    win.setAttributes(params);
+                    dialog_main.dismiss();
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+                return true;
+            }
+        });
+        switch_record_clip.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                try {
+                    final View view = inflater.inflate(R.layout.view_clip, null);
+                    final AlertDialog dialog_clip = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).create();
+                    final EditText textView = view.findViewById(R.id.editText);
+                    TextView but_empty = view.findViewById(R.id.empty);
+                    TextView but_cancel = view.findViewById(R.id.cancel);
+                    TextView but_sure = view.findViewById(R.id.sure);
+                    but_empty.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            textView.setText("");
+                        }
+                    });
+                    but_cancel.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            dialog_clip.dismiss();
+                        }
+                    });
+                    but_sure.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            try {
+                                FileWriter writer = new FileWriter(savePath + "/" + "ClipContentCache.txt", false);
+                                writer.write(textView.getText().toString());
+                                writer.close();
+                                dialog_clip.dismiss();
+                            } catch (Throwable e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                    File file = new File(savePath + "/" + "ClipContentCache.txt");
+                    if (file.exists()) {
+                        StringBuilder builder = new StringBuilder();
+                        Scanner scanner = new Scanner(file);
+                        while (scanner.hasNextLine()) {
+                            builder.append(scanner.nextLine() + "\n");
+                        }
+                        scanner.close();
+                        textView.setText(builder.toString());
+                        textView.setSelection(builder.length());
+                    } else {
+                        textView.setHint("当前文件内容为空");
+                    }
+                    Window win = dialog_clip.getWindow();
+                    win.setBackgroundDrawableResource(R.drawable.dialogbackground);
+                    win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+                    win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+                    win.setDimAmount(0);
+                    dialog_clip.show();
+                    WindowManager.LayoutParams params = win.getAttributes();
+                    params.width = metrics.widthPixels;
                     win.setAttributes(params);
                     dialog_main.dismiss();
                 } catch (Throwable e) {
@@ -1171,23 +1271,44 @@ public class MyAccessibilityService extends AccessibilityService {
                     asi.eventTypes &= ~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
                     editor.putInt(EVENT_TYPES, asi.eventTypes & (~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED)).apply();
                 }
-                if (switch_screen_lightness.isChecked()) {
-                    screenLightness.showFloat();
-                    control_lightness = true;
-                    editor.putBoolean(CONTROL_LIGHTNESS, true).apply();
+                if (switch_record_clip.isChecked()) {
+                    if (!record_clip) {
+                        clipboardManager.addPrimaryClipChangedListener(primaryClipChangedListener);
+                        record_clip = true;
+                        editor.putBoolean(RECORD_CLIP, true).apply();
+                    }
                 } else {
-                    screenLightness.dismiss();
-                    control_lightness = false;
-                    editor.putBoolean(CONTROL_LIGHTNESS, false).apply();
+                    if (record_clip) {
+                        clipboardManager.removePrimaryClipChangedListener(primaryClipChangedListener);
+                        record_clip = false;
+                        editor.putBoolean(RECORD_CLIP, false).apply();
+                    }
+                }
+                if (switch_screen_lightness.isChecked()) {
+                    if (!control_lightness) {
+                        screenLightness.showFloat();
+                        control_lightness = true;
+                        editor.putBoolean(CONTROL_LIGHTNESS, true).apply();
+                    }
+                } else {
+                    if (control_lightness) {
+                        screenLightness.dismiss();
+                        control_lightness = false;
+                        editor.putBoolean(CONTROL_LIGHTNESS, false).apply();
+                    }
                 }
                 if (switch_screen_lock.isChecked()) {
-                    screenLock.showLockFloat();
-                    control_lock = true;
-                    editor.putBoolean(CONTROL_LOCK, true).apply();
+                    if (!control_lock) {
+                        screenLock.showLockFloat();
+                        control_lock = true;
+                        editor.putBoolean(CONTROL_LOCK, true).apply();
+                    }
                 } else {
-                    screenLock.dismiss();
-                    control_lock = false;
-                    editor.putBoolean(CONTROL_LOCK, false).apply();
+                    if (control_lock) {
+                        screenLock.dismiss();
+                        control_lock = false;
+                        editor.putBoolean(CONTROL_LOCK, false).apply();
+                    }
                 }
                 setServiceInfo(asi);
                 dialog_main.dismiss();
