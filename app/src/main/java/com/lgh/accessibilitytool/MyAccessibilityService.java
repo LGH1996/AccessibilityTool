@@ -357,6 +357,48 @@ public class MyAccessibilityService extends AccessibilityService {
     }
 
     /**
+     * 用于启动界面查找“跳过”的控件
+     */
+    private void findSkipButton(AccessibilityNodeInfo nodeInfo) {
+        if (nodeInfo == null) return;
+        for (int n = 0; n < keyWordList.size(); n++) {
+            List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText(keyWordList.get(n));
+            for (AccessibilityNodeInfo e : list) {
+                if (!e.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    if (!e.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                        Rect rect = new Rect();
+                        e.getBoundsInScreen(rect);
+                        click(rect.centerX(), rect.centerY(), 0, 20);
+                    }
+                }
+            }
+            if (!list.isEmpty() || win_state_count >= 25) {
+                asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+                setServiceInfo(asi);
+                is_state_change = false;
+                future.cancel(false);
+                break;
+            }
+        }
+        win_state_count++;
+    }
+
+    /**
+     * 模拟
+     * 点击
+     */
+    private boolean click(int X, int Y, long start_time, long duration) {
+        Path path = new Path();
+        path.moveTo(X, Y);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            GestureDescription.Builder builder = new GestureDescription.Builder().addStroke(new GestureDescription.StrokeDescription(path, start_time, duration));
+            return dispatchGesture(builder.build(), null, null);
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * 初始化各种数据
      */
     private void initializeData() {
@@ -366,7 +408,6 @@ public class MyAccessibilityService extends AccessibilityService {
         double_press = false;
         old_pac = "Initialize PackageName";
         cur_act = "Initialize ClassName";
-        savePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).getAbsolutePath();
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
@@ -401,6 +442,9 @@ public class MyAccessibilityService extends AccessibilityService {
         IntentFilter filter_screen = new IntentFilter();
         filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screenOnReceiver, filter_screen);
+        File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        if (!file.exists()) file.mkdirs();
+        savePath = file.getAbsolutePath();
         primaryClipChangedListener = new ClipboardManager.OnPrimaryClipChangedListener() {
             @Override
             public void onPrimaryClipChanged() {
@@ -415,9 +459,11 @@ public class MyAccessibilityService extends AccessibilityService {
                         if (str == null) continue;
                         builder.append(str.toString().replaceAll("\\s", ""));
                     }
-                    builder.append("\n");
+                    String text = builder.toString();
+                    if (text.isEmpty()) return;
                     FileWriter writer = new FileWriter(savePath + "/" + "ClipContentCache.txt", true);
-                    writer.append(builder.toString());
+                    writer.append(text);
+                    writer.append("\n");
                     writer.close();
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -516,48 +562,6 @@ public class MyAccessibilityService extends AccessibilityService {
         pac_white.add("com.android.packageinstaller");
         pac_white.removeAll(pac_input);
 
-    }
-
-    /**
-     * 用于启动界面查找“跳过”的控件
-     */
-    private void findSkipButton(AccessibilityNodeInfo nodeInfo) {
-        if (nodeInfo == null) return;
-        for (int n = 0; n < keyWordList.size(); n++) {
-            List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText(keyWordList.get(n));
-            for (AccessibilityNodeInfo e : list) {
-                if (!e.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                    if (!e.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                        Rect rect = new Rect();
-                        e.getBoundsInScreen(rect);
-                        click(rect.centerX(), rect.centerY(), 0, 20);
-                    }
-                }
-            }
-            if (!list.isEmpty() || win_state_count >= 25) {
-                asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                setServiceInfo(asi);
-                is_state_change = false;
-                future.cancel(false);
-                break;
-            }
-        }
-        win_state_count++;
-    }
-
-    /**
-     * 模拟
-     * 点击
-     */
-    private boolean click(int X, int Y, long start_time, long duration) {
-        Path path = new Path();
-        path.moveTo(X, Y);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            GestureDescription.Builder builder = new GestureDescription.Builder().addStroke(new GestureDescription.StrokeDescription(path, start_time, duration));
-            return dispatchGesture(builder.build(), null, null);
-        } else {
-            return false;
-        }
     }
 
     /**
@@ -983,6 +987,7 @@ public class MyAccessibilityService extends AccessibilityService {
             @Override
             public boolean onLongClick(View v) {
                 try {
+                    final File file = new File(savePath + "/" + "NotificationMessageCache.txt");
                     final View view = inflater.inflate(R.layout.view_massage, null);
                     final AlertDialog dialog_message = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).create();
                     final EditText textView = view.findViewById(R.id.editText);
@@ -1097,7 +1102,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         @Override
                         public void onClick(View v) {
                             try {
-                                FileWriter writer = new FileWriter(savePath + "/" + "NotificationMessageCache.txt", false);
+                                FileWriter writer = new FileWriter(file, false);
                                 writer.write(textView.getText().toString());
                                 writer.close();
                                 dialog_message.dismiss();
@@ -1106,7 +1111,6 @@ public class MyAccessibilityService extends AccessibilityService {
                             }
                         }
                     });
-                    File file = new File(savePath + "/" + "NotificationMessageCache.txt");
                     if (file.exists()) {
                         StringBuilder builder = new StringBuilder();
                         Scanner scanner = new Scanner(file);
@@ -1139,6 +1143,7 @@ public class MyAccessibilityService extends AccessibilityService {
             @Override
             public boolean onLongClick(View v) {
                 try {
+                    final File file = new File(savePath + "/" + "ClipContentCache.txt");
                     final View view = inflater.inflate(R.layout.view_clip, null);
                     final AlertDialog dialog_clip = new AlertDialog.Builder(MyAccessibilityService.this).setView(view).create();
                     final EditText textView = view.findViewById(R.id.editText);
@@ -1161,7 +1166,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         @Override
                         public void onClick(View v) {
                             try {
-                                FileWriter writer = new FileWriter(savePath + "/" + "ClipContentCache.txt", false);
+                                FileWriter writer = new FileWriter(file, false);
                                 writer.write(textView.getText().toString());
                                 writer.close();
                                 dialog_clip.dismiss();
@@ -1170,7 +1175,6 @@ public class MyAccessibilityService extends AccessibilityService {
                             }
                         }
                     });
-                    File file = new File(savePath + "/" + "ClipContentCache.txt");
                     if (file.exists()) {
                         StringBuilder builder = new StringBuilder();
                         Scanner scanner = new Scanner(file);
