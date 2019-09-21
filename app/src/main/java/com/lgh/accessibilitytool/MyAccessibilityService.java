@@ -57,9 +57,6 @@ import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.reflect.Type;
@@ -78,20 +75,23 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 public class MyAccessibilityService extends AccessibilityService {
 
+    static final String TAG = "MyAccessibilityService";
+    static final String CONTROL_LIGHTNESS = "control_lightness";
+    static final String CONTROL_LOCK = "control_lock";
+    static final String RECORD_CLIP = "record_clip";
+    static final String EVENT_TYPES = "event_type";
+    static final String FLAGS = "flags";
+    static final String PAC_MSG = "pac_msg";
+    static final String VIBRATION_STRENGTH = "vibration_strength";
+    static final String ACTIVITY_MAP = "act_p";
+    static final String PAC_WHITE = "pac_white";
+    static final String KEY_WORD_LIST = "keyWordList";
     public static Handler handler;
-    static String TAG = "MyAccessibilityService";
-    static String CONTROL_LIGHTNESS = "control_lightness";
-    static String CONTROL_LOCK = "control_lock";
-    static String RECORD_CLIP = "record_clip";
-    static String EVENT_TYPES = "event_type";
-    static String FLAGS = "flags";
-    static String PAC_MSG = "pac_msg";
-    static String VIBRATION_STRENGTH = "vibration_strength";
-    static String ACTIVITY_MAP = "act_p";
-    static String PAC_WHITE = "pac_white";
-    static String KEY_WORD_LIST = "keyWordList";
     private boolean double_press;
     private boolean is_release_up, is_release_down;
     private boolean control_lightness, control_lock, is_state_change, record_clip;
@@ -107,7 +107,7 @@ public class MyAccessibilityService extends AccessibilityService {
     private ArrayList<String> keyWordList;
     private Map<String, SkipButtonDescribe> act_p;
     private AccessibilityServiceInfo asi;
-    private String old_pac, cur_act, savePath;
+    private String old_pac, cur_act, savePath, packageName;
     private WindowManager windowManager;
     private DevicePolicyManager devicePolicyManager;
     private ScreenLightness screenLightness;
@@ -218,12 +218,17 @@ public class MyAccessibilityService extends AccessibilityService {
                     if (event.getParcelableData() instanceof Notification && pac_msg.contains(event.getPackageName())) {
                         List<CharSequence> list_msg = event.getText();
                         StringBuilder builder = new StringBuilder();
-                        for (CharSequence s : list_msg)
-                            builder.append("[" + s.toString().replaceAll("\\s", "") + "]");
-                        builder.append("\n");
-                        FileWriter writer = new FileWriter(savePath + "/" + "NotificationMessageCache.txt", true);
-                        writer.append(builder.toString());
-                        writer.close();
+                        for (CharSequence s : list_msg) {
+                            builder.append(s.toString().replaceAll("\\s", ""));
+                        }
+                        String tem = builder.toString();
+                        if (!tem.isEmpty()) {
+                            FileWriter writer = new FileWriter(savePath + "/" + "NotificationMessageCache.txt", true);
+                            writer.append("[");
+                            writer.append(tem);
+                            writer.append("]" + "\n");
+                            writer.close();
+                        }
                     }
                     break;
             }
@@ -408,9 +413,10 @@ public class MyAccessibilityService extends AccessibilityService {
         double_press = false;
         old_pac = "Initialize PackageName";
         cur_act = "Initialize ClassName";
+        packageName = getPackageName();
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-        sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
+        sharedPreferences = getSharedPreferences(packageName, MODE_PRIVATE);
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         devicePolicyManager = (DevicePolicyManager) getSystemService(DEVICE_POLICY_SERVICE);
         clipboardManager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
@@ -442,14 +448,16 @@ public class MyAccessibilityService extends AccessibilityService {
         IntentFilter filter_screen = new IntentFilter();
         filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screenOnReceiver, filter_screen);
-        File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        final File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
         if (!file.exists()) file.mkdirs();
         savePath = file.getAbsolutePath();
         primaryClipChangedListener = new ClipboardManager.OnPrimaryClipChangedListener() {
+            String old_clip = "";
+
             @Override
             public void onPrimaryClipChanged() {
                 try {
-                    if (old_pac.equals(getPackageName())) return;
+                    if (old_pac.equals(packageName)) return;
                     ClipData clipData = clipboardManager.getPrimaryClip();
                     if (clipData == null) return;
                     StringBuilder builder = new StringBuilder();
@@ -460,7 +468,8 @@ public class MyAccessibilityService extends AccessibilityService {
                         builder.append(str.toString().replaceAll("\\s", ""));
                     }
                     String text = builder.toString();
-                    if (text.isEmpty()) return;
+                    if (text.isEmpty() || text.equals(old_clip)) return;
+                    old_clip = text;
                     FileWriter writer = new FileWriter(savePath + "/" + "ClipContentCache.txt", true);
                     writer.append(text);
                     writer.append("\n");
@@ -619,9 +628,9 @@ public class MyAccessibilityService extends AccessibilityService {
                         imageView.setImageResource(R.drawable.u);
                         modify.setText("该应用未安装");
                     }
-                    className.setText(e.getValue().className);
+                    className.setText(value.className);
                     x.setText(String.valueOf(value.x));
-                    y.setText(String.valueOf(e.getValue().y));
+                    y.setText(String.valueOf(value.y));
                     period.setText(String.valueOf(value.period));
                     delete.setOnClickListener(new View.OnClickListener() {
                         @Override
@@ -1227,7 +1236,7 @@ public class MyAccessibilityService extends AccessibilityService {
         bt_set.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName));
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent);
                 dialog_main.dismiss();
