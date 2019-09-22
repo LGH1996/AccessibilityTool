@@ -6,6 +6,33 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>help</title>
   <script src="jquery.js"></script>
+  <script>
+    $(document).ready(function () {
+      var arr = new Array();
+      var h1 = $("h1");
+      h1.each(function () {
+        var next = $(this).next();
+        arr[$(this).parent().index()] = next.height();
+        next.css("height", "0px");
+      });
+      h1.click(function () {
+        var ul = $(this).next();
+        var img = $(this).children("img");
+        var time = arr[$(this).parent().index()] * 2;
+        if (ul.css("height") == "0px") {
+          ul.animate({
+            height: time/2 + "px"
+          }, time);
+          img.css("animation", "hor " + time + "ms " + "linear " + "forwards");
+        } else {
+          ul.animate({
+            height: '0px'
+          }, time);
+          img.css("animation", "ver " + time + "ms " + "linear " + "forwards");
+        }
+      });
+    });
+  </script>
   <style>
     body {
       background-color: white;
@@ -35,9 +62,8 @@
       text-align: justify;
       font-size: 16px;
       display: block;
-      max-height: 0px;
+      height: auto;
       overflow: hidden;
-
     }
 
     h1 img {
@@ -132,7 +158,8 @@
     <ul>
       <li>通过双击屏幕的左右上角实现一键锁屏。</li>
       <li>对于Android 8.0以下的系统需要授予设备管理器权限，该功能在横屏的状态下无效。</li>
-      <li>有些手机在授予设备管理器权限后会出现无法卸载或清除数据的情况，可以在取消激活设备管理器权限后重试。如果遇到设备管理器权限无法取消的情况，请确保当前页面没有被悬浮窗遮挡后重试。</li>
+      <li>有些手机在授予设备管理器权限后会出现无法卸载或清除数据的情况，可以在取消激活设备管理器权限后重试。</li>
+      <li>如果遇到设备管理器权限无法打开或取消的情况，请确保当前页面没有被悬浮窗遮挡后重试。</li>
     </ul>
   </div>
   <div>
@@ -144,27 +171,4 @@
           target="_blank">https://github.com/LGH1996/AccessibilityTool</a></li>
     </ul>
   </div>
-  <script>
-    $(document).ready(function () {
-      var heights = $("ul").css("height", "auto").height();
-      console.log(heights);
-
-      var h = $("h1");
-      h.click(function () {
-        var img = $(this).children("img");
-        var u = $(this).next();
-        if (u.css("max-height") == "0px") {
-          u.animate({
-            maxHeight: '1500px'
-          }, 1000);
-          img.css("animation", "hor 1s forwards");
-        } else {
-          u.animate({
-            maxHeight: '0px'
-          }, 1000);
-          img.css("animation", "ver 1s forwards");
-        }
-      });
-    });
-  </script>
 </body>

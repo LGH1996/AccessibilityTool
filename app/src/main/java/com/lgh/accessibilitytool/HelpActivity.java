@@ -21,6 +21,6 @@ public class HelpActivity extends Activity {
         webView.setLayoutParams(params);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
-        webView.loadUrl("file:///android_asset/test.html");
+        webView.loadUrl("file:///android_asset/help.html");
     }
 }
