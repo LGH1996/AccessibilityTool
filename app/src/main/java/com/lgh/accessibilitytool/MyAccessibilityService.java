@@ -448,7 +448,7 @@ public class MyAccessibilityService extends AccessibilityService {
         IntentFilter filter_screen = new IntentFilter();
         filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screenOnReceiver, filter_screen);
-        final File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
         if (!file.exists()) file.mkdirs();
         savePath = file.getAbsolutePath();
         primaryClipChangedListener = new ClipboardManager.OnPrimaryClipChangedListener() {
