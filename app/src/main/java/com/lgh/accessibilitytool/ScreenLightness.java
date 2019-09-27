@@ -57,8 +57,8 @@ public class ScreenLightness {
         }
     }
 
-    public void refreshOnOrientationChange(){
-        if (imageView != null){
+    public void refreshOnOrientationChange() {
+        if (imageView != null) {
             DisplayMetrics metrics = new DisplayMetrics();
             windowManager.getDefaultDisplay().getRealMetrics(metrics);
             if (params.width != metrics.widthPixels || params.height != metrics.heightPixels) {
@@ -98,8 +98,13 @@ public class ScreenLightness {
         WindowManager.LayoutParams win_params = win.getAttributes();
         DisplayMetrics metrics = new DisplayMetrics();
         windowManager.getDefaultDisplay().getMetrics(metrics);
-        win_params.width = (metrics.widthPixels / 6) * 5;
-        win_params.height = metrics.heightPixels / 2;
+        if (metrics.heightPixels > metrics.widthPixels) {
+            win_params.width = (metrics.widthPixels / 6) * 5;
+            win_params.height = metrics.heightPixels / 2;
+        } else {
+            win_params.width = (metrics.heightPixels / 6) * 5;
+            win_params.height = metrics.widthPixels / 2;
+        }
         win.setAttributes(win_params);
     }
 

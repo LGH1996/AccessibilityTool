@@ -117,6 +117,10 @@ public class MyAccessibilityService extends AccessibilityService {
     private MyScreenOffReceiver screenOnReceiver;
     private ClipboardManager clipboardManager;
     private ClipboardManager.OnPrimaryClipChangedListener primaryClipChangedListener;
+    private WindowManager.LayoutParams aParams;
+    private WindowManager.LayoutParams bParams;
+    private View adv_view;
+    private ImageView target_xy;
 
     @Override
     public void onCreate() {
@@ -339,6 +343,16 @@ public class MyAccessibilityService extends AccessibilityService {
                         screenLock.dismiss();
                         break;
                 }
+            }
+            if (adv_view != null && target_xy != null){
+                DisplayMetrics metrics = new DisplayMetrics();
+                windowManager.getDefaultDisplay().getRealMetrics(metrics);
+                aParams.x = (metrics.widthPixels - aParams.width) / 2;
+                aParams.y = (metrics.heightPixels - aParams.height) / 2;
+                bParams.x = (metrics.widthPixels - bParams.width) /2;
+                bParams.y = metrics.heightPixels - bParams.height;
+                windowManager.updateViewLayout(adv_view,bParams);
+                windowManager.updateViewLayout(target_xy,aParams);
             }
         } catch (Throwable e) {
             e.printStackTrace();
@@ -580,7 +594,9 @@ public class MyAccessibilityService extends AccessibilityService {
         final DisplayMetrics metrics = new DisplayMetrics();
         windowManager.getDefaultDisplay().getRealMetrics(metrics);
         final ComponentName componentName = new ComponentName(MyAccessibilityService.this, MyDeviceAdminReceiver.class);
-        final int width = (metrics.widthPixels / 6) * 5;
+        final boolean b = metrics.heightPixels > metrics.widthPixels;
+        final int width = b ? metrics.widthPixels : metrics.heightPixels;
+        final int height = b ? metrics.heightPixels : metrics.widthPixels;
         final LayoutInflater inflater = LayoutInflater.from(MyAccessibilityService.this);
         final View view_main = inflater.inflate(R.layout.main_dialog, null);
         final AlertDialog dialog_main = new AlertDialog.Builder(MyAccessibilityService.this).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_main).create();
@@ -748,7 +764,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         win.setDimAmount(0);
                         dialog_pac.show();
                         WindowManager.LayoutParams params = win.getAttributes();
-                        params.width = width;
+                        params.width = (width / 6) * 5;
                         win.setAttributes(params);
                         dialog_adv.dismiss();
                     }
@@ -773,27 +789,28 @@ public class MyAccessibilityService extends AccessibilityService {
                     @SuppressLint("ClickableViewAccessibility")
                     @Override
                     public void onClick(View v) {
-                        final WindowManager.LayoutParams aParams = new WindowManager.LayoutParams();
-                        final WindowManager.LayoutParams bParams = new WindowManager.LayoutParams();
+                        aParams = new WindowManager.LayoutParams();
+                        bParams = new WindowManager.LayoutParams();
                         aParams.type = bParams.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
                         aParams.format = bParams.format = PixelFormat.TRANSPARENT;
                         aParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
                         bParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
                         aParams.gravity = bParams.gravity = Gravity.START | Gravity.TOP;
-                        aParams.width = aParams.height = metrics.widthPixels / 4;
-                        aParams.x = metrics.widthPixels / 2 - aParams.width / 2;
-                        aParams.y = metrics.heightPixels / 2 - aParams.height / 2;
-                        bParams.width = metrics.widthPixels;
-                        bParams.height = metrics.heightPixels / 5;
+                        aParams.width = aParams.height = width / 4;
+                        aParams.x = (metrics.widthPixels - aParams.width) / 2;
+                        aParams.y = (metrics.heightPixels - aParams.height) / 2;
+                        bParams.width = width;
+                        bParams.height = height / 5;
+                        bParams.x = (metrics.widthPixels - bParams.width) /2;
                         bParams.y = metrics.heightPixels - bParams.height;
                         aParams.alpha = 0.5f;
                         bParams.alpha = 0.8f;
-                        final View adv_view = inflater.inflate(R.layout.advertise_desc, null);
+                        adv_view = inflater.inflate(R.layout.advertise_desc, null);
                         final TextView adv_desc = adv_view.findViewById(R.id.adv_desc);
                         Button saveButton = adv_view.findViewById(R.id.adv_add);
                         Button quitButton = adv_view.findViewById(R.id.quit);
-                        final ImageView image = new ImageView(MyAccessibilityService.this);
-                        image.setImageResource(R.drawable.p);
+                        target_xy = new ImageView(MyAccessibilityService.this);
+                        target_xy.setImageResource(R.drawable.p);
                         adv_view.setOnTouchListener(new View.OnTouchListener() {
                             int x = 0, y = 0;
 
@@ -815,7 +832,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                 return true;
                             }
                         });
-                        image.setOnTouchListener(new View.OnTouchListener() {
+                        target_xy.setOnTouchListener(new View.OnTouchListener() {
                             int x = 0, y = 0, width = aParams.width / 2, height = aParams.height / 2;
 
                             @Override
@@ -823,7 +840,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                 switch (event.getAction()) {
                                     case MotionEvent.ACTION_DOWN:
                                         aParams.alpha = 0.9f;
-                                        windowManager.updateViewLayout(image, aParams);
+                                        windowManager.updateViewLayout(target_xy, aParams);
                                         x = Math.round(event.getRawX());
                                         y = Math.round(event.getRawY());
                                         break;
@@ -832,7 +849,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                         aParams.y = Math.round(aParams.y + (event.getRawY() - y));
                                         x = Math.round(event.getRawX());
                                         y = Math.round(event.getRawY());
-                                        windowManager.updateViewLayout(image, aParams);
+                                        windowManager.updateViewLayout(target_xy, aParams);
                                         packageName = old_pac;
                                         className = cur_act;
                                         pX = aParams.x + width;
@@ -841,7 +858,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                         break;
                                     case MotionEvent.ACTION_UP:
                                         aParams.alpha = 0.5f;
-                                        windowManager.updateViewLayout(image, aParams);
+                                        windowManager.updateViewLayout(target_xy, aParams);
                                         break;
                                 }
                                 return true;
@@ -853,7 +870,11 @@ public class MyAccessibilityService extends AccessibilityService {
                                 String gJson = new Gson().toJson(act_p);
                                 sharedPreferences.edit().putString(ACTIVITY_MAP, gJson).apply();
                                 windowManager.removeViewImmediate(adv_view);
-                                windowManager.removeViewImmediate(image);
+                                windowManager.removeViewImmediate(target_xy);
+                                adv_view = null;
+                                target_xy = null;
+                                aParams = null;
+                                bParams = null;
                             }
                         });
                         saveButton.setOnClickListener(new View.OnClickListener() {
@@ -865,7 +886,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             }
                         });
                         windowManager.addView(adv_view, bParams);
-                        windowManager.addView(image, aParams);
+                        windowManager.addView(target_xy, aParams);
                         dialog_adv.dismiss();
                     }
                 });
@@ -888,7 +909,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             public void onClick(View v) {
                                 final String input = edit.getText().toString();
                                 if (!input.isEmpty()) {
-                                    if (!keyWordList.contains(input) && keyWordList.size() < 10) {
+                                    if (!keyWordList.contains(input)) {
                                         final View itemView = inflater.inflate(R.layout.keyword_item, null);
                                         final TextView text = itemView.findViewById(R.id.keyName);
                                         TextView rm = itemView.findViewById(R.id.remove);
@@ -924,11 +945,11 @@ public class MyAccessibilityService extends AccessibilityService {
                         Window win = dialog_key.getWindow();
                         win.setBackgroundDrawableResource(R.drawable.dialogbackground);
                         win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                        win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST);
+                        win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
                         win.setDimAmount(0);
                         dialog_key.show();
                         WindowManager.LayoutParams params = win.getAttributes();
-                        params.width = width;
+                        params.width = (width / 6) * 5;
                         win.setAttributes(params);
                         dialog_adv.dismiss();
                     }
@@ -947,7 +968,7 @@ public class MyAccessibilityService extends AccessibilityService {
                 win.setDimAmount(0);
                 dialog_adv.show();
                 WindowManager.LayoutParams params = win.getAttributes();
-                params.width = width;
+                params.width = (width / 6) * 5;
                 win.setAttributes(params);
                 dialog_main.dismiss();
                 return true;
@@ -986,7 +1007,7 @@ public class MyAccessibilityService extends AccessibilityService {
                 win.setDimAmount(0);
                 dialog_vol.show();
                 WindowManager.LayoutParams params = win.getAttributes();
-                params.width = width;
+                params.width = (width / 6) * 5;
                 win.setAttributes(params);
                 dialog_main.dismiss();
                 return true;
@@ -1078,7 +1099,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             win.setDimAmount(0);
                             dialog_pac.show();
                             WindowManager.LayoutParams params = win.getAttributes();
-                            params.width = width;
+                            params.width = (width / 6) * 5;
                             win.setAttributes(params);
                             dialog_message.dismiss();
                         }
@@ -1333,7 +1354,7 @@ public class MyAccessibilityService extends AccessibilityService {
         win.setDimAmount(0);
         dialog_main.show();
         WindowManager.LayoutParams params = win.getAttributes();
-        params.width = width;
+        params.width = (width / 6) * 5;
         win.setAttributes(params);
     }
 }

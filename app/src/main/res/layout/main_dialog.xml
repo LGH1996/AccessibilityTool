@@ -1,121 +1,136 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center"
-    android:orientation="vertical"
-    android:paddingStart="25dp"
-    android:paddingTop="10dp"
-    android:paddingEnd="25dp">
+    android:orientation="vertical">
 
-    <ImageView
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:src="@color/divideLine" />
-
-    <Switch
-        android:id="@+id/skip_advertising"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp"
-        android:layout_weight="1"
-        android:checked="true"
-        android:hint="跳过启动广告"
-        android:textColorHint="@color/textColor" />
+        android:layout_weight="20">
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:src="@color/divideLine" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="25dp"
+            android:paddingEnd="25dp">
 
-    <Switch
-        android:id="@+id/volume_control"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp"
-        android:layout_weight="1"
-        android:checked="true"
-        android:hint="音量键切音频"
-        android:textColorHint="@color/textColor" />
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:src="@color/divideLine" />
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:src="@color/divideLine" />
+            <Switch
+                android:id="@+id/skip_advertising"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_weight="1"
+                android:checked="true"
+                android:hint="跳过启动广告"
+                android:textColorHint="@color/textColor" />
 
-    <Switch
-        android:id="@+id/record_message"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp"
-        android:layout_weight="1"
-        android:checked="true"
-        android:hint="记录通知消息"
-        android:textColorHint="@color/textColor" />
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:src="@color/divideLine" />
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:src="@color/divideLine" />
+            <Switch
+                android:id="@+id/volume_control"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_weight="1"
+                android:checked="true"
+                android:hint="音量键切音频"
+                android:textColorHint="@color/textColor" />
 
-    <Switch
-        android:id="@+id/record_clip"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp"
-        android:layout_weight="1"
-        android:checked="true"
-        android:hint="记录剪贴内容"
-        android:textColorHint="@color/textColor" />
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:src="@color/divideLine" />
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:src="@color/divideLine" />
+            <Switch
+                android:id="@+id/record_message"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_weight="1"
+                android:checked="true"
+                android:hint="记录通知消息"
+                android:textColorHint="@color/textColor" />
 
-    <Switch
-        android:id="@+id/screen_lightness"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp"
-        android:layout_weight="1"
-        android:checked="true"
-        android:hint="调节屏幕亮度"
-        android:textColorHint="@color/textColor" />
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:src="@color/divideLine" />
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:src="@color/divideLine" />
+            <Switch
+                android:id="@+id/record_clip"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_weight="1"
+                android:checked="true"
+                android:hint="记录剪贴内容"
+                android:textColorHint="@color/textColor" />
 
-    <Switch
-        android:id="@+id/screen_lock"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp"
-        android:layout_weight="1"
-        android:checked="true"
-        android:hint="双击顶角锁屏"
-        android:textColorHint="@color/textColor" />
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:src="@color/divideLine" />
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:src="@color/divideLine" />
+            <Switch
+                android:id="@+id/screen_lightness"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_weight="1"
+                android:checked="true"
+                android:hint="调节屏幕亮度"
+                android:textColorHint="@color/textColor" />
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:src="@color/divideLine" />
+
+            <Switch
+                android:id="@+id/screen_lock"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_weight="1"
+                android:checked="true"
+                android:hint="双击顶角锁屏"
+                android:textColorHint="@color/textColor" />
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:src="@color/divideLine" />
+        </LinearLayout>
+    </ScrollView>
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="20dp"
+        android:layout_weight="1"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:paddingStart="25dp"
+        android:paddingTop="15dp"
+        android:paddingEnd="25dp"
+        android:paddingBottom="15dp">
 
         <TextView
             android:id="@+id/set"
