@@ -3,25 +3,66 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="#ffffffff"
+    android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp">
 
-    <TextView
-        android:id="@+id/adv_desc"
+    <TableLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="5dp"
         android:layout_marginEnd="5dp"
-        android:lineSpacingExtra="5dp"
-        android:lines="3"
-        android:text="广告页的活动名和’跳过‘控件的坐标时自动跳过启动广告的关键，请在广告页中拖动上方准星对准’跳过‘控件，然后点击’保存‘以存储广告页相关的数据。"
-        android:textColor="@color/textColor"
-        android:textSize="12sp" />
+        android:stretchColumns="1">
+
+        <TableRow
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp">
+
+            <TextView
+                android:text="包名："
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/pacName"
+                android:hint="请拖动上方的准星对准广告页的跳过控件"
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+        </TableRow>
+
+        <TableRow
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp">
+
+            <TextView
+                android:text="活动："
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/actName"
+                android:hint="然后点击保存以记录当前的活动名和控件坐标"
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+        </TableRow>
+
+        <TableRow
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp">
+
+            <TextView
+                android:id="@+id/xyd"
+                android:layout_span="2"
+                android:hint="正确的活动名和控件坐标是能否通过点击跳过启动广告的关键"
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+        </TableRow>
+    </TableLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
         android:orientation="horizontal">
 
         <Button

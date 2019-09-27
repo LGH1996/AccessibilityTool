@@ -344,15 +344,15 @@ public class MyAccessibilityService extends AccessibilityService {
                         break;
                 }
             }
-            if (adv_view != null && target_xy != null){
+            if (adv_view != null && target_xy != null) {
                 DisplayMetrics metrics = new DisplayMetrics();
                 windowManager.getDefaultDisplay().getRealMetrics(metrics);
                 aParams.x = (metrics.widthPixels - aParams.width) / 2;
                 aParams.y = (metrics.heightPixels - aParams.height) / 2;
-                bParams.x = (metrics.widthPixels - bParams.width) /2;
+                bParams.x = (metrics.widthPixels - bParams.width) / 2;
                 bParams.y = metrics.heightPixels - bParams.height;
-                windowManager.updateViewLayout(adv_view,bParams);
-                windowManager.updateViewLayout(target_xy,aParams);
+                windowManager.updateViewLayout(adv_view, bParams);
+                windowManager.updateViewLayout(target_xy, aParams);
             }
         } catch (Throwable e) {
             e.printStackTrace();
@@ -789,6 +789,10 @@ public class MyAccessibilityService extends AccessibilityService {
                     @SuppressLint("ClickableViewAccessibility")
                     @Override
                     public void onClick(View v) {
+                        if (target_xy != null && adv_view != null){
+                            dialog_adv.dismiss();
+                            return;
+                        }
                         aParams = new WindowManager.LayoutParams();
                         bParams = new WindowManager.LayoutParams();
                         aParams.type = bParams.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
@@ -801,12 +805,14 @@ public class MyAccessibilityService extends AccessibilityService {
                         aParams.y = (metrics.heightPixels - aParams.height) / 2;
                         bParams.width = width;
                         bParams.height = height / 5;
-                        bParams.x = (metrics.widthPixels - bParams.width) /2;
+                        bParams.x = (metrics.widthPixels - bParams.width) / 2;
                         bParams.y = metrics.heightPixels - bParams.height;
                         aParams.alpha = 0.5f;
                         bParams.alpha = 0.8f;
                         adv_view = inflater.inflate(R.layout.advertise_desc, null);
-                        final TextView adv_desc = adv_view.findViewById(R.id.adv_desc);
+                        final TextView pacName = adv_view.findViewById(R.id.pacName);
+                        final TextView actName = adv_view.findViewById(R.id.actName);
+                        final TextView xyd = adv_view.findViewById(R.id.xyd);
                         Button saveButton = adv_view.findViewById(R.id.adv_add);
                         Button quitButton = adv_view.findViewById(R.id.quit);
                         target_xy = new ImageView(MyAccessibilityService.this);
@@ -854,7 +860,9 @@ public class MyAccessibilityService extends AccessibilityService {
                                         className = cur_act;
                                         pX = aParams.x + width;
                                         pY = aParams.y + height;
-                                        adv_desc.setText("包名：" + packageName + "\n" + "活动名：" + className + "\n" + "X坐标：" + pX + "    Y坐标：" + pY + "    点击周期：300ms(默认)");
+                                        pacName.setText(packageName);
+                                        actName.setText(className);
+                                        xyd.setText("X坐标：" + pX + "    Y坐标：" + pY + "    点击周期：300ms(默认)");
                                         break;
                                     case MotionEvent.ACTION_UP:
                                         aParams.alpha = 0.5f;
@@ -882,7 +890,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             public void onClick(View v) {
                                 if (packageName == null || className == null) return;
                                 act_p.put(className, new SkipButtonDescribe(packageName, className, pX, pY, 300));
-                                adv_desc.setText("包名：" + packageName + "　(以下数据已保存)" + "\n" + "活动名：" + className + "\n" + "X坐标：" + pX + "    Y坐标：" + pY + "    点击周期：300ms(默认)");
+                                pacName.setText(packageName + " (以下数据已保存)");
                             }
                         });
                         windowManager.addView(adv_view, bParams);
@@ -1160,7 +1168,7 @@ public class MyAccessibilityService extends AccessibilityService {
                     win.setDimAmount(0);
                     dialog_message.show();
                     WindowManager.LayoutParams params = win.getAttributes();
-                    params.width = metrics.widthPixels;
+                    params.width = width;
                     win.setAttributes(params);
                     dialog_main.dismiss();
                 } catch (Throwable e) {
@@ -1224,7 +1232,7 @@ public class MyAccessibilityService extends AccessibilityService {
                     win.setDimAmount(0);
                     dialog_clip.show();
                     WindowManager.LayoutParams params = win.getAttributes();
-                    params.width = metrics.widthPixels;
+                    params.width = width;
                     win.setAttributes(params);
                     dialog_main.dismiss();
                 } catch (Throwable e) {
