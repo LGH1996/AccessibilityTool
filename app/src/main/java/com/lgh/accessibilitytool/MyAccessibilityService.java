@@ -789,7 +789,7 @@ public class MyAccessibilityService extends AccessibilityService {
                     @SuppressLint("ClickableViewAccessibility")
                     @Override
                     public void onClick(View v) {
-                        if (target_xy != null && adv_view != null){
+                        if (target_xy != null && adv_view != null) {
                             dialog_adv.dismiss();
                             return;
                         }
