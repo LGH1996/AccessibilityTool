@@ -33,7 +33,7 @@ public class ScreenLock {
         Resources resources = context.getResources();
         int resourceId = resources.getIdentifier("status_bar_height", "dimen", "android");
         params.width = resources.getDisplayMetrics().widthPixels / 10;
-        params.height = resources.getDimensionPixelSize(resourceId) - 10;
+        params.height = resources.getDimensionPixelSize(resourceId) - 20;
         imageView_left = new ImageView(context);
         imageView_right = new ImageView(context);
         View.OnClickListener clickListener = new View.OnClickListener() {

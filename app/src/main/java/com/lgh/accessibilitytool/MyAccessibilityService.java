@@ -56,6 +56,7 @@ import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -94,11 +95,12 @@ public class MyAccessibilityService extends AccessibilityService {
     public static Handler handler;
     private boolean double_press;
     private boolean is_release_up, is_release_down;
-    private boolean control_lightness, control_lock, is_state_change, record_clip;
+    private boolean control_lightness, control_lock, record_clip;
+    private boolean is_state_change_a, is_state_change_b;
     private long star_up, star_down;
     private int win_state_count, create_num, connect_num, vibration_strength;
     private SharedPreferences sharedPreferences;
-    private ScheduledFuture future;
+    private ScheduledFuture future_v, future_a, future_b;
     private ScheduledExecutorService executorService;
     private AudioManager audioManager;
     private PackageManager packageManager;
@@ -156,50 +158,66 @@ public class MyAccessibilityService extends AccessibilityService {
                     String str = event.getPackageName().toString();
                     if (!str.equals(old_pac)) {
                         if (pac_launch.contains(str)) {
+                            Toast.makeText(MyAccessibilityService.this, "pac_launch.contains(str):" + str, Toast.LENGTH_SHORT).show();
+                            future_a.cancel(false);
+                            future_b.cancel(false);
                             asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                             setServiceInfo(asi);
-                            is_state_change = true;
+                            is_state_change_a = true;
+                            is_state_change_b = true;
                             win_state_count = 0;
                             old_pac = str;
-                            future.cancel(false);
-                            future = executorService.schedule(new Runnable() {
+                            future_a = executorService.schedule(new Runnable() {
                                 @Override
                                 public void run() {
                                     asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                                     setServiceInfo(asi);
-                                    is_state_change = false;
+                                    is_state_change_a = false;
+                                }
+                            }, 8000, TimeUnit.MILLISECONDS);
+                            future_b = executorService.schedule(new Runnable() {
+                                @Override
+                                public void run() {
+                                    is_state_change_b = false;
                                 }
                             }, 8000, TimeUnit.MILLISECONDS);
                         } else if (pac_white.contains(str)) {
+                            Toast.makeText(MyAccessibilityService.this, "pac_white.contains(str):" + str, Toast.LENGTH_SHORT).show();
                             old_pac = str;
-                            if (is_state_change) {
+                            if (is_state_change_a) {
                                 asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                                 setServiceInfo(asi);
-                                is_state_change = false;
-                                future.cancel(false);
+                                is_state_change_a = false;
+                                future_a.cancel(false);
+                            }
+                            if (is_state_change_b) {
+                                is_state_change_b = false;
+                                future_b.cancel(false);
                             }
                         }
                     }
-                    if (is_state_change && str.equals(old_pac)) {
+                    if (is_state_change_a && str.equals(old_pac)) {
                         findSkipButton(getRootInActiveWindow());
                     }
                     String act = event.getClassName().toString();
                     if (!act.startsWith("android.widget.")) {
                         cur_act = act;
-                        if (is_state_change) {
+                        if (is_state_change_b) {
                             final SkipButtonDescribe p = act_p.get(act);
                             if (p != null) {
-                                click(p.x, p.y, 0, 20);
                                 asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                                 setServiceInfo(asi);
-                                is_state_change = false;
-                                future.cancel(false);
+                                is_state_change_a = false;
+                                is_state_change_b = false;
+                                future_a.cancel(false);
+                                future_b.cancel(false);
+                                final AccessibilityNodeInfo node = event.getSource();
                                 executorService.scheduleAtFixedRate(new Runnable() {
                                     int num = 0;
 
                                     @Override
                                     public void run() {
-                                        if (act_p.containsKey(cur_act) && num < (8000 / p.period)) {
+                                        if (num < (8000 / p.period) && node.refresh()) {
                                             click(p.x, p.y, 0, 20);
                                             num++;
                                         } else throw new RuntimeException();
@@ -210,7 +228,7 @@ public class MyAccessibilityService extends AccessibilityService {
                     }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
-                    if (is_state_change && !event.getPackageName().equals("com.android.systemui")) {
+                    if (is_state_change_a && !event.getPackageName().equals("com.android.systemui")) {
                         if (win_state_count <= 5) {
                             findSkipButton(getRootInActiveWindow());
                         } else {
@@ -254,7 +272,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             is_release_up = false;
                             double_press = false;
                             if (is_release_down) {
-                                future = executorService.schedule(new Runnable() {
+                                future_v = executorService.schedule(new Runnable() {
                                     @Override
                                     public void run() {
 //                                        Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> THREAD");
@@ -273,7 +291,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             break;
                         case KeyEvent.ACTION_UP:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> KeyEvent.ACTION_UP");
-                            future.cancel(false);
+                            future_v.cancel(false);
                             is_release_up = true;
                             if (!double_press && System.currentTimeMillis() - star_up < 800) {
                                 audioManager.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
@@ -289,7 +307,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             is_release_down = false;
                             double_press = false;
                             if (is_release_up) {
-                                future = executorService.schedule(new Runnable() {
+                                future_v = executorService.schedule(new Runnable() {
                                     @Override
                                     public void run() {
 //                                        Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> THREAD");
@@ -309,7 +327,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             break;
                         case KeyEvent.ACTION_UP:
 //                            Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> KeyEvent.ACTION_UP");
-                            future.cancel(false);
+                            future_v.cancel(false);
                             is_release_down = true;
                             if (!double_press && System.currentTimeMillis() - star_down < 800) {
                                 audioManager.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
@@ -394,8 +412,9 @@ public class MyAccessibilityService extends AccessibilityService {
             if (!list.isEmpty() || win_state_count >= 25) {
                 asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                 setServiceInfo(asi);
-                is_state_change = false;
-                future.cancel(false);
+                is_state_change_a = false;
+                future_a.cancel(false);
+                Toast.makeText(MyAccessibilityService.this, "FindOrTimeout:" + " " + win_state_count, Toast.LENGTH_SHORT).show();
                 break;
             }
         }
@@ -423,7 +442,8 @@ public class MyAccessibilityService extends AccessibilityService {
     private void initializeData() {
         is_release_up = true;
         is_release_down = true;
-        is_state_change = false;
+        is_state_change_a = false;
+        is_state_change_b = false;
         double_press = false;
         old_pac = "Initialize PackageName";
         cur_act = "Initialize ClassName";
@@ -513,7 +533,7 @@ public class MyAccessibilityService extends AccessibilityService {
             keyWordList = new ArrayList<>();
             keyWordList.add("跳过");
         }
-        future = executorService.schedule(new Runnable() {
+        future_v = future_a = future_b = executorService.schedule(new Runnable() {
             @Override
             public void run() {
             }
@@ -581,9 +601,11 @@ public class MyAccessibilityService extends AccessibilityService {
         pac_launch.removeAll(pac_white);
         pac_launch.removeAll(pac_home);
         pac_launch.removeAll(pac_input);
+        pac_launch.remove(packageName);
         pac_white.addAll(pac_home);
         pac_white.add("com.android.packageinstaller");
         pac_white.removeAll(pac_input);
+        pac_white.remove(packageName);
 
     }
 
@@ -696,7 +718,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         final ArrayList<Drawable> drawables = new ArrayList<>();
                         for (ResolveInfo e : list) {
                             ApplicationInfo info = e.activityInfo.applicationInfo;
-                            if (pac_home.contains(info.packageName) || pac_input.contains(info.packageName))
+                            if (pac_home.contains(info.packageName) || pac_input.contains(info.packageName) || info.packageName.equals(packageName))
                                 continue;
                             pac_name.add(info.packageName);
                             pac_label.add(packageManager.getApplicationLabel(info).toString());
