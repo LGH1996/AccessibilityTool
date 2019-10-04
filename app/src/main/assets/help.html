@@ -10,6 +10,8 @@
     $(document).ready(function () {
       var arr = new Array();
       var h1 = $("h1");
+      var check = $("#check");
+      check.attr("checked", HelpActivity.getAutoRemove());
       h1.each(function () {
         var next = $(this).next();
         arr[$(this).parent().index()] = next.height();
@@ -28,6 +30,13 @@
             height: '0px'
           }, 1000);
           img.css("animation", "ver " + "1000ms " + "linear " + "forwards");
+        }
+      });
+      check.click(function () {
+        if ($(this).is(":checked")) {
+          HelpActivity.setAutoRemove(true);
+        } else {
+          HelpActivity.setAutoRemove(false);
         }
       });
     });
@@ -165,18 +174,15 @@
   <div>
     <h1>八、更多相关内容 <img src="d.png" /> </h1>
     <ul>
+      <li>当前页面自动从最近任务列表中隐藏：<input id="check" type="checkbox" style="position: relative; top:3px"></li>
       <li>作者联系方式：2281442260（QQ）</li>
       <li>github地址：<a style="text-decoration: none;word-break: break-all;"
           href="https://github.com/LGH1996/AccessibilityTool"
           target="_blank">https://github.com/LGH1996/AccessibilityTool</a>
       </li>
-    </ul>
-  </div>
-  <div>
-    <h1>九、请作者喝杯茶 <img src="d.png" /> </h1>
-    <ul>
       <li>
-        <img src="pay.jpg" style="display: block; margin: auto; width: 100%; height: 100%; border-radius: 10px"></img>
+        <p>支持作者：</p><img src="pay.jpg"
+          style="display: block; margin: auto; width: 100%; height: 100%; border-radius: 10px"></img>
       </li>
     </ul>
   </div>

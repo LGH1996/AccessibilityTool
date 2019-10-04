@@ -30,7 +30,8 @@
             android:alpha="0.3"
             android:text="设置白名单"
             android:textColor="@color/textColor"
-            android:textSize="13sp" />
+            android:textSize="13sp"
+            android:layout_margin="2dp"/>
 
         <Button
             android:id="@+id/add"
@@ -40,7 +41,8 @@
             android:alpha="0.3"
             android:text="添加广告页"
             android:textColor="@color/textColor"
-            android:textSize="13sp" />
+            android:textSize="13sp"
+            android:layout_margin="2dp"/>
 
         <Button
             android:id="@+id/keyword"
@@ -50,7 +52,8 @@
             android:alpha="0.3"
             android:text="添加关键字"
             android:textColor="@color/textColor"
-            android:textSize="13sp" />
+            android:textSize="13sp"
+            android:layout_margin="2dp"/>
 
     </LinearLayout>
 </LinearLayout>

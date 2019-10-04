@@ -72,7 +72,8 @@
             android:layout_weight="1"
             android:text="退出"
             android:textColor="@color/textColor"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:layout_margin="2dp"/>
 
         <Button
             android:id="@+id/adv_add"
@@ -81,6 +82,17 @@
             android:layout_weight="1"
             android:text="保存"
             android:textColor="@color/textColor"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:layout_margin="2dp"/>
+
+        <Button
+            android:id="@+id/switch_mod"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="添加坐标"
+            android:textColor="@color/textColor"
+            android:textSize="12sp"
+            android:layout_margin="2dp"/>
     </LinearLayout>
 </LinearLayout>

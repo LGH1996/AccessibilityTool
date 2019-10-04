@@ -77,7 +77,7 @@
 
         <activity
             android:name=".HelpActivity"
-            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
             android:theme="@style/AppTheme">
         </activity>
 

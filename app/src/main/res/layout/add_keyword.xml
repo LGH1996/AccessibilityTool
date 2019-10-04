@@ -20,7 +20,6 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="10dp"
         android:layout_weight="1"
         android:gravity="center"
         android:orientation="horizontal">
@@ -28,16 +27,17 @@
         <EditText
             android:id="@+id/inputKet"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginEnd="5dp"
+            android:layout_marginBottom="5dp"
             android:layout_weight="1"
             android:background="#aaffffff"
             android:hint="关键字应按出现频率降序排列"
-            android:labelFor="@id/addKey"
             android:maxLength="13"
             android:paddingStart="15dp"
-            android:paddingTop="11dp"
             android:paddingEnd="15dp"
-            android:paddingBottom="11dp"
             android:singleLine="true"
             android:textColor="@color/textColor"
             android:textColorHint="@color/divideLine"
@@ -46,9 +46,11 @@
         <Button
             android:id="@+id/addKey"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="10dp"
             android:layout_weight="3"
             android:alpha="0.5"
+            android:gravity="center"
             android:text="添加"
             android:textColor="@color/textColor"
             android:textSize="12sp" />

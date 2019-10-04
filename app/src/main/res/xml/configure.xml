@@ -3,7 +3,7 @@
     android:description="@string/description"
     android:accessibilityFlags="flagRetrieveInteractiveWindows"
     android:accessibilityFeedbackType="feedbackAllMask"
-    android:notificationTimeout="100"
+    android:notificationTimeout="50"
     android:canRequestFilterKeyEvents="true"
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="true"
