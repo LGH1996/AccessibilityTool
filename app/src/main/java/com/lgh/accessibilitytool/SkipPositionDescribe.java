@@ -1,6 +1,6 @@
 package com.lgh.accessibilitytool;
 
-public class SkipButtonDescribe {
+public class SkipPositionDescribe {
     public String packageName;
     public String className;
     public int x;
@@ -9,7 +9,7 @@ public class SkipButtonDescribe {
     public int period;
     public int number;
 
-    public SkipButtonDescribe(String packageName, String className, int x, int y,int delay, int period, int number) {
+    public SkipPositionDescribe(String packageName, String className, int x, int y, int delay, int period, int number) {
         this.packageName = packageName;
         this.className = className;
         this.x = x;
