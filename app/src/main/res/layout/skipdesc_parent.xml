@@ -26,34 +26,34 @@
             android:id="@+id/choose"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="2dp"
             android:layout_weight="1"
             android:alpha="0.3"
             android:text="设置白名单"
             android:textColor="@color/textColor"
-            android:textSize="13sp"
-            android:layout_margin="2dp"/>
+            android:textSize="13sp" />
 
         <Button
             android:id="@+id/add"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="2dp"
             android:layout_weight="1"
             android:alpha="0.3"
             android:text="添加广告页"
             android:textColor="@color/textColor"
-            android:textSize="13sp"
-            android:layout_margin="2dp"/>
+            android:textSize="13sp" />
 
         <Button
             android:id="@+id/keyword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="2dp"
             android:layout_weight="1"
             android:alpha="0.3"
             android:text="添加关键字"
             android:textColor="@color/textColor"
-            android:textSize="13sp"
-            android:layout_margin="2dp"/>
+            android:textSize="13sp" />
 
     </LinearLayout>
 </LinearLayout>

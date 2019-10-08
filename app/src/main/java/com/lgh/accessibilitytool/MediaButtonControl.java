@@ -6,14 +6,15 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.view.KeyEvent;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class MediaButtonControl {
 
-   private Context context;
-   private Set<String> music_set;
+    private Context context;
+    private Set<String> music_set;
 
     public MediaButtonControl(Context context) {
         this.context = context;
@@ -29,13 +30,13 @@ public class MediaButtonControl {
         upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
         for (String e : music_set) {
             downIntent.setPackage(e);
-            context.sendOrderedBroadcast(downIntent,null);
+            context.sendOrderedBroadcast(downIntent, null);
             upIntent.setPackage(e);
-            context.sendOrderedBroadcast(upIntent,null);
+            context.sendOrderedBroadcast(upIntent, null);
         }
     }
 
-    public void updateMusicSet(){
+    public void updateMusicSet() {
         music_set = new HashSet<>();
         List<ResolveInfo> list = context.getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_MEDIA_BUTTON), PackageManager.MATCH_ALL);
         for (ResolveInfo e : list) {

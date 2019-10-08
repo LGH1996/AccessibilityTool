@@ -38,87 +38,130 @@
                 android:textColor="@color/textColor"
                 android:textSize="12sp" />
         </RelativeLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="5dp">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="@color/textColor"
-            android:text="Id:"/>
-        <EditText
-            android:id="@+id/widget_id"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/textColor"
-            android:background="@null"
-            android:singleLine="true"
-            android:textSize="12sp"/>
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="5dp">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:text="Clickable:"
                 android:textColor="@color/textColor"
-                android:textSize="12sp"
-                android:text="Bonus:"/>
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/widget_clickable"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:enabled="false"
+                android:singleLine="true"
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:text="Bonus:"
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+
             <EditText
                 android:id="@+id/widget_bonus"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@color/textColor"
                 android:background="@null"
+                android:enabled="false"
                 android:singleLine="true"
-                android:textSize="12sp"/>
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="5dp">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:text="Id:"
                 android:textColor="@color/textColor"
-                android:textSize="12sp"
-                android:text="Describe:"/>
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/widget_id"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:singleLine="true"
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:text="Describe:"
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
+
             <EditText
                 android:id="@+id/widget_describe"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@color/textColor"
                 android:background="@null"
                 android:singleLine="true"
-                android:textSize="12sp"/>
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="5dp">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:text="Text:"
                 android:textColor="@color/textColor"
-                android:textSize="12sp"
-                android:text="Text:"/>
+                android:textSize="12sp" />
+
             <EditText
                 android:id="@+id/widget_text"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@color/textColor"
                 android:background="@null"
                 android:singleLine="true"
-                android:textSize="12sp"/>
+                android:textColor="@color/textColor"
+                android:textSize="12sp" />
         </LinearLayout>
+
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="end"
             android:orientation="horizontal"
+            android:paddingTop="5dp"
             android:paddingBottom="10dp">
 
             <TextView

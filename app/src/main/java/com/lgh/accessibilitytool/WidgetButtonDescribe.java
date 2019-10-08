@@ -2,10 +2,25 @@ package com.lgh.accessibilitytool;
 
 import android.graphics.Rect;
 
+import java.util.Objects;
+
 public class WidgetButtonDescribe {
     public String packageName, activityName, className, idName, describe, text;
     public Rect bonus;
-    public WidgetButtonDescribe(String packageName, String activityName,String className,String idName,String describe,String text,Rect bonus){
+    public boolean clickable;
+
+    public WidgetButtonDescribe() {
+        this.packageName = "";
+        this.activityName = "";
+        this.className = "";
+        this.idName = "";
+        this.describe = "";
+        this.text = "";
+        this.bonus = new Rect();
+        this.clickable = false;
+    }
+
+    public WidgetButtonDescribe(String packageName, String activityName, String className, String idName, String describe, String text, Rect bonus, boolean clickable) {
         this.packageName = packageName;
         this.activityName = activityName;
         this.className = className;
@@ -13,9 +28,10 @@ public class WidgetButtonDescribe {
         this.describe = describe;
         this.text = text;
         this.bonus = bonus;
+        this.clickable = clickable;
     }
 
-    public WidgetButtonDescribe(WidgetButtonDescribe widgetDescribe){
+    public WidgetButtonDescribe(WidgetButtonDescribe widgetDescribe) {
         this.packageName = widgetDescribe.packageName;
         this.activityName = widgetDescribe.activityName;
         this.className = widgetDescribe.className;
@@ -23,20 +39,21 @@ public class WidgetButtonDescribe {
         this.describe = widgetDescribe.describe;
         this.text = widgetDescribe.text;
         this.bonus = new Rect(widgetDescribe.bonus);
+        this.clickable = widgetDescribe.clickable;
 
     }
 
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == null) return false;
-            if (this == obj) return true;
-            if (!(obj instanceof WidgetButtonDescribe)) return false;
-            WidgetButtonDescribe widget = (WidgetButtonDescribe) obj;
-            return bonus.equals(widget.bonus);
-        }
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) return false;
+        if (this == obj) return true;
+        if (!(obj instanceof WidgetButtonDescribe)) return false;
+        WidgetButtonDescribe widget = (WidgetButtonDescribe) obj;
+        return bonus.equals(widget.bonus);
+    }
 
     @Override
     public int hashCode() {
-        return bonus.hashCode();
+        return Objects.hash(bonus);
     }
 }

@@ -45,13 +45,11 @@ public class HelpActivity extends Activity {
 
     @JavascriptInterface
     public boolean getAutoRemove() {
-        Toast.makeText(this, "getAutoRemove", Toast.LENGTH_SHORT).show();
         return autoRemove;
     }
 
     @JavascriptInterface
     public void setAutoRemove(boolean b) {
-        Toast.makeText(this, "setAutoRemove" + b, Toast.LENGTH_SHORT).show();
         autoRemove = b;
     }
 }
