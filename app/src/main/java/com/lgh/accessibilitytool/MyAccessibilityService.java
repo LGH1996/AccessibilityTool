@@ -143,7 +143,7 @@ public class MyAccessibilityService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         if (++connect_num != create_num) {
-            throw null;
+            throw new RuntimeException("无障碍服务出现异常");
         }
         try {
             initializeData();
@@ -158,9 +158,11 @@ public class MyAccessibilityService extends AccessibilityService {
         try {
             switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
-                    String str = event.getPackageName().toString();
-                    if (!str.equals(cur_pac)) {
-                        if (pac_launch.contains(str)) {
+                    CharSequence temPac = event.getPackageName();
+                    if (temPac == null) break;
+                    String pacName = temPac.toString();
+                    if (!pacName.equals(cur_pac)) {
+                        if (pac_launch.contains(pacName)) {
                             future_a.cancel(false);
                             future_b.cancel(false);
                             asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
@@ -168,7 +170,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             is_state_change_a = true;
                             is_state_change_b = true;
                             win_state_count = 0;
-                            cur_pac = str;
+                            cur_pac = pacName;
                             future_a = executorService.schedule(new Runnable() {
                                 @Override
                                 public void run() {
@@ -183,8 +185,8 @@ public class MyAccessibilityService extends AccessibilityService {
                                     is_state_change_b = false;
                                 }
                             }, 8000, TimeUnit.MILLISECONDS);
-                        } else if (pac_white.contains(str)) {
-                            cur_pac = str;
+                        } else if (pac_white.contains(pacName)) {
+                            cur_pac = pacName;
                             if (is_state_change_a) {
                                 asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                                 setServiceInfo(asi);
@@ -197,21 +199,21 @@ public class MyAccessibilityService extends AccessibilityService {
                             }
                         }
                     }
-                    if (is_state_change_a && str.equals(cur_pac)) {
+                    if (is_state_change_a && pacName.equals(cur_pac)) {
                         findSkipButton(getRootInActiveWindow());
                     }
                     CharSequence temClass = event.getClassName();
                     if (temClass != null) {
-                        String act = temClass.toString();
-                        if (!act.startsWith("android.widget.")) {
-                            cur_act = act;
+                        String actName = temClass.toString();
+                        if (!actName.startsWith("android.widget.")) {
+                            cur_act = actName;
                             if (is_state_change_b) {
-                                final Set<WidgetButtonDescribe> setWidget = act_widget.get(act);
-                                final SkipPositionDescribe skipPosition = act_position.get(act);
+                                final Set<WidgetButtonDescribe> setWidget = act_widget.get(actName);
+                                final SkipPositionDescribe skipPosition = act_position.get(actName);
                                 if (setWidget != null) {
                                     is_state_change_b = false;
                                     future_b.cancel(false);
-                                    final String temActivity = act;
+                                    final String temActivity = actName;
                                     final AccessibilityNodeInfo node = event.getSource();
                                     executorService.scheduleAtFixedRate(new Runnable() {
                                         int num = 0;
@@ -237,7 +239,7 @@ public class MyAccessibilityService extends AccessibilityService {
                                     is_state_change_b = false;
                                     future_a.cancel(false);
                                     future_b.cancel(false);
-                                    final String temActivity = act;
+                                    final String temActivity = actName;
                                     final AccessibilityNodeInfo node = event.getSource();
                                     executorService.scheduleAtFixedRate(new Runnable() {
                                         int num = 0;
@@ -466,7 +468,9 @@ public class MyAccessibilityService extends AccessibilityService {
             CharSequence cDescribe = node.getContentDescription();
             CharSequence cText = node.getText();
             for (WidgetButtonDescribe e : set) {
+
                 boolean isFind = false;
+
                 if (temRect.equals(e.bonus)) {
                     isFind = true;
                 } else if (cId != null && !e.idName.isEmpty() && cId.toString().equals(e.idName)) {
@@ -476,6 +480,7 @@ public class MyAccessibilityService extends AccessibilityService {
                 } else if (cText != null && !e.text.isEmpty() && cText.toString().contains(e.text)) {
                     isFind = true;
                 }
+
                 if (isFind) {
                     if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
                         if (!node.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
@@ -831,21 +836,9 @@ public class MyAccessibilityService extends AccessibilityService {
                         className.setText(widget.activityName);
                         widgetClickable.setText(widget.clickable ? "true" : "false");
                         widgetBonus.setText(widget.bonus.toShortString());
-                        if (widget.idName.isEmpty()) {
-                            widgetId.setHint("该属性不存在");
-                        } else {
-                            widgetId.setText(widget.idName);
-                        }
-                        if (widget.describe.isEmpty()) {
-                            widgetDescribe.setHint("该属性不存在");
-                        } else {
-                            widgetDescribe.setText(widget.describe);
-                        }
-                        if (widget.text.isEmpty()) {
-                            widgetText.setHint("该属性不存在");
-                        } else {
-                            widgetText.setText(widget.text);
-                        }
+                        widgetId.setText(widget.idName);
+                        widgetDescribe.setText(widget.describe);
+                        widgetText.setText(widget.text);
                         parentView.addView(childView);
                         delete.setOnClickListener(new View.OnClickListener() {
                             @Override
@@ -865,17 +858,8 @@ public class MyAccessibilityService extends AccessibilityService {
                                 widget.text = widgetText.getText().toString().trim();
 
                                 widgetId.setText(widget.idName);
-                                if (widget.idName.isEmpty()) {
-                                    widgetId.setHint("该属性不存在");
-                                }
                                 widgetDescribe.setText(widget.describe);
-                                if (widget.describe.isEmpty()) {
-                                    widgetDescribe.setHint("该属性不存在");
-                                }
                                 widgetText.setText(widget.text);
-                                if (widget.text.isEmpty()) {
-                                    widgetText.setHint("该属性不存在");
-                                }
                                 modify.setText(new SimpleDateFormat("HH:mm:ss a", Locale.ENGLISH).format(new Date()) + "(修改成功)");
                             }
                         });
@@ -994,7 +978,7 @@ public class MyAccessibilityService extends AccessibilityService {
                         }
 
                         widgetDescribe = new WidgetButtonDescribe();
-                        positionDescribe = new SkipPositionDescribe("", "", 0, 0, 1000, 500, 1);
+                        positionDescribe = new SkipPositionDescribe("", "", 0, 0, 500, 500, 1);
 
                         adv_view = inflater.inflate(R.layout.advertise_desc, null);
                         final TextView pacName = adv_view.findViewById(R.id.pacName);

@@ -27,6 +27,7 @@
             <TextView
                 android:id="@+id/pacName"
                 android:hint="显示当前应用的包名"
+                android:singleLine="true"
                 android:textColor="@color/textColor"
                 android:textSize="12sp" />
         </TableRow>
@@ -43,6 +44,7 @@
             <TextView
                 android:id="@+id/actName"
                 android:hint="显示当前页面的活动名"
+                android:singleLine="true"
                 android:textColor="@color/textColor"
                 android:textSize="12sp" />
         </TableRow>
