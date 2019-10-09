@@ -462,15 +462,14 @@ public class MyAccessibilityService extends AccessibilityService {
     private void findSkipButtonByWidget(ArrayList<AccessibilityNodeInfo> roots, Set<WidgetButtonDescribe> set) {
         ArrayList<AccessibilityNodeInfo> list = new ArrayList<>();
         for (AccessibilityNodeInfo node : roots) {
+            if (node == null) continue;
             Rect temRect = new Rect();
             node.getBoundsInScreen(temRect);
             CharSequence cId = node.getViewIdResourceName();
             CharSequence cDescribe = node.getContentDescription();
             CharSequence cText = node.getText();
             for (WidgetButtonDescribe e : set) {
-
                 boolean isFind = false;
-
                 if (temRect.equals(e.bonus)) {
                     isFind = true;
                 } else if (cId != null && !e.idName.isEmpty() && cId.toString().equals(e.idName)) {
@@ -480,7 +479,6 @@ public class MyAccessibilityService extends AccessibilityService {
                 } else if (cText != null && !e.text.isEmpty() && cText.toString().contains(e.text)) {
                     isFind = true;
                 }
-
                 if (isFind) {
                     if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
                         if (!node.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
@@ -1177,6 +1175,7 @@ public class MyAccessibilityService extends AccessibilityService {
                             public void draw(ArrayList<AccessibilityNodeInfo> roots) {
                                 ArrayList<AccessibilityNodeInfo> list = new ArrayList<>();
                                 for (final AccessibilityNodeInfo e : roots) {
+                                    if (e == null) continue;
                                     final Rect temRect = new Rect();
                                     e.getBoundsInScreen(temRect);
                                     FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(temRect.width(), temRect.height());
