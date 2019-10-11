@@ -65,6 +65,8 @@ import java.io.FileWriter;
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -99,11 +101,11 @@ public class MyAccessibilityService extends AccessibilityService {
     private boolean double_press;
     private boolean is_release_up, is_release_down;
     private boolean control_lightness, control_lock, record_clip;
-    private boolean is_state_change_a, is_state_change_b;
+    private boolean is_state_change_a;
     private long star_up, star_down;
     private int win_state_count, create_num, connect_num, vibration_strength;
     private SharedPreferences sharedPreferences;
-    private ScheduledFuture future_v, future_a, future_b;
+    private ScheduledFuture future_v, future_a;
     private ScheduledExecutorService executorService;
     private AudioManager audioManager;
     private PackageManager packageManager;
@@ -123,6 +125,7 @@ public class MyAccessibilityService extends AccessibilityService {
     private MyScreenOffReceiver screenOnReceiver;
     private ClipboardManager clipboardManager;
     private ClipboardManager.OnPrimaryClipChangedListener primaryClipChangedListener;
+    private Set<WidgetButtonDescribe> widgetSet;
     private WindowManager.LayoutParams aParams, bParams, cParams;
     private View adv_view, layout_win;
     private ImageView target_xy;
@@ -164,11 +167,9 @@ public class MyAccessibilityService extends AccessibilityService {
                     if (!pacName.equals(cur_pac)) {
                         if (pac_launch.contains(pacName)) {
                             future_a.cancel(false);
-                            future_b.cancel(false);
                             asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                             setServiceInfo(asi);
                             is_state_change_a = true;
-                            is_state_change_b = true;
                             win_state_count = 0;
                             cur_pac = pacName;
                             future_a = executorService.schedule(new Runnable() {
@@ -176,77 +177,34 @@ public class MyAccessibilityService extends AccessibilityService {
                                 public void run() {
                                     asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                                     setServiceInfo(asi);
+                                    widgetSet = null;
                                     is_state_change_a = false;
-                                }
-                            }, 8000, TimeUnit.MILLISECONDS);
-                            future_b = executorService.schedule(new Runnable() {
-                                @Override
-                                public void run() {
-                                    is_state_change_b = false;
                                 }
                             }, 8000, TimeUnit.MILLISECONDS);
                         } else if (pac_white.contains(pacName)) {
                             cur_pac = pacName;
                             if (is_state_change_a) {
-                                asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                                setServiceInfo(asi);
-                                is_state_change_a = false;
-                                future_a.cancel(false);
-                            }
-                            if (is_state_change_b) {
-                                is_state_change_b = false;
-                                future_b.cancel(false);
+                                closeContentChanged();
                             }
                         }
-                    }
-                    if (is_state_change_a && pacName.equals(cur_pac)) {
-                        findSkipButton(getRootInActiveWindow());
                     }
                     CharSequence temClass = event.getClassName();
                     if (temClass != null) {
                         String actName = temClass.toString();
                         if (!actName.startsWith("android.widget.")) {
                             cur_act = actName;
-                            if (is_state_change_b) {
-                                final Set<WidgetButtonDescribe> setWidget = act_widget.get(actName);
+                            if (is_state_change_a) {
+                                widgetSet = act_widget.get(actName);
                                 final SkipPositionDescribe skipPosition = act_position.get(actName);
-                                if (setWidget != null) {
-                                    is_state_change_b = false;
-                                    future_b.cancel(false);
+                                if (skipPosition != null) {
+                                    closeContentChanged();
                                     final String temActivity = actName;
-                                    final AccessibilityNodeInfo node = event.getSource();
                                     executorService.scheduleAtFixedRate(new Runnable() {
                                         int num = 0;
 
                                         @Override
                                         public void run() {
-                                            if (num < 40 && cur_act.equals(temActivity) && node.refresh()) {
-                                                AccessibilityNodeInfo root = getRootInActiveWindow();
-                                                if (root == null) return;
-                                                ArrayList<AccessibilityNodeInfo> roots = new ArrayList<>();
-                                                roots.add(root);
-                                                findSkipButtonByWidget(roots, setWidget);
-                                                num++;
-                                            } else {
-                                                throw new RuntimeException();
-                                            }
-                                        }
-                                    }, 0, 100, TimeUnit.MILLISECONDS);
-                                } else if (skipPosition != null) {
-                                    asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                                    setServiceInfo(asi);
-                                    is_state_change_a = false;
-                                    is_state_change_b = false;
-                                    future_a.cancel(false);
-                                    future_b.cancel(false);
-                                    final String temActivity = actName;
-                                    final AccessibilityNodeInfo node = event.getSource();
-                                    executorService.scheduleAtFixedRate(new Runnable() {
-                                        int num = 0;
-
-                                        @Override
-                                        public void run() {
-                                            if (num < skipPosition.number && cur_act.equals(temActivity) && node.refresh()) {
+                                            if (num < skipPosition.number && cur_act.equals(temActivity)) {
                                                 click(skipPosition.x, skipPosition.y, 0, 20);
                                                 num++;
                                             } else {
@@ -258,14 +216,25 @@ public class MyAccessibilityService extends AccessibilityService {
                             }
                         }
                     }
+                    if (is_state_change_a && pacName.equals(cur_pac)) {
+                        AccessibilityNodeInfo root = getRootInActiveWindow();
+                        findSkipButton(root);
+                        if (widgetSet != null) {
+                            findSkipButtonByWidget(root, widgetSet);
+                        }
+                    }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
                     if (is_state_change_a && !event.getPackageName().equals("com.android.systemui")) {
-                        if (win_state_count <= 5) {
-                            findSkipButton(getRootInActiveWindow());
-                        } else {
-                            findSkipButton(event.getSource());
+                        AccessibilityNodeInfo source = event.getSource();
+                        findSkipButton(source);
+                        if (widgetSet != null) {
+                            findSkipButtonByWidget(source, widgetSet);
                         }
+                        if (win_state_count >= 100) {
+                            closeContentChanged();
+                        }
+                        win_state_count++;
                     }
                     break;
                 case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
@@ -433,35 +402,43 @@ public class MyAccessibilityService extends AccessibilityService {
     }
 
     /**
-     * 用于启动界面查找“跳过”的控件
+     * 自动查找启动广告的
+     * “跳过”的控件
      */
     private void findSkipButton(AccessibilityNodeInfo nodeInfo) {
         if (nodeInfo == null) return;
         for (int n = 0; n < keyWordList.size(); n++) {
             List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText(keyWordList.get(n));
-            for (AccessibilityNodeInfo e : list) {
-                if (!e.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                    if (!e.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                        Rect rect = new Rect();
-                        e.getBoundsInScreen(rect);
-                        click(rect.centerX(), rect.centerY(), 0, 20);
+            if (!list.isEmpty()) {
+                for (AccessibilityNodeInfo e : list) {
+                    if (!e.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                        if (!e.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                            Rect rect = new Rect();
+                            e.getBoundsInScreen(rect);
+                            click(rect.centerX(), rect.centerY(), 0, 20);
+                        }
                     }
                 }
-            }
-            if (!list.isEmpty() || win_state_count >= 25) {
-                asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                setServiceInfo(asi);
-                is_state_change_a = false;
-                future_a.cancel(false);
+                closeContentChanged();
                 return;
             }
+
         }
-        win_state_count++;
     }
 
-    private void findSkipButtonByWidget(ArrayList<AccessibilityNodeInfo> roots, Set<WidgetButtonDescribe> set) {
-        ArrayList<AccessibilityNodeInfo> list = new ArrayList<>();
-        for (AccessibilityNodeInfo node : roots) {
+    /**
+     * 查找并点击由
+     * WidgetButtonDescribe
+     * 定义的控件
+     */
+    private void findSkipButtonByWidget(AccessibilityNodeInfo root, Set<WidgetButtonDescribe> set) {
+        int a = 0;
+        int b = 1;
+        ArrayList<AccessibilityNodeInfo> listA = new ArrayList<>();
+        ArrayList<AccessibilityNodeInfo> listB = new ArrayList<>();
+        listA.add(root);
+        while (a < b) {
+            AccessibilityNodeInfo node = listA.get(a++);
             if (node == null) continue;
             Rect temRect = new Rect();
             node.getBoundsInScreen(temRect);
@@ -485,19 +462,37 @@ public class MyAccessibilityService extends AccessibilityService {
                             click(temRect.centerX(), temRect.centerY(), 0, 20);
                         }
                     }
-                    asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                    setServiceInfo(asi);
-                    is_state_change_a = false;
-                    future_a.cancel(false);
-                    throw new RuntimeException();
+                    closeContentChanged();
+                    return;
                 }
             }
             for (int n = 0; n < node.getChildCount(); n++) {
-                list.add(node.getChild(n));
+                listB.add(node.getChild(n));
+            }
+            if (a == b) {
+                a = 0;
+                b = listB.size();
+                listA = listB;
+                listB = new ArrayList<>();
             }
         }
-        if (!list.isEmpty()) {
-            findSkipButtonByWidget(list, set);
+    }
+
+    /**
+     * 查找所有
+     * 的控件
+     */
+    private void findAllNode(List<AccessibilityNodeInfo> roots, List<AccessibilityNodeInfo> list) {
+        ArrayList<AccessibilityNodeInfo> temList = new ArrayList<>();
+        for (AccessibilityNodeInfo e : roots) {
+            if (e == null) continue;
+            list.add(e);
+            for (int n = 0; n < e.getChildCount(); n++) {
+                temList.add(e.getChild(n));
+            }
+        }
+        if (!temList.isEmpty()) {
+            findAllNode(temList, list);
         }
     }
 
@@ -517,6 +512,19 @@ public class MyAccessibilityService extends AccessibilityService {
     }
 
     /**
+     * 关闭
+     * ContentChanged
+     * 事件的响应
+     */
+    private void closeContentChanged() {
+        asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+        setServiceInfo(asi);
+        widgetSet = null;
+        is_state_change_a = false;
+        future_a.cancel(false);
+    }
+
+    /**
      * 初始化各种数据
      */
     private void initializeData() {
@@ -524,7 +532,6 @@ public class MyAccessibilityService extends AccessibilityService {
         is_release_down = true;
         double_press = false;
         is_state_change_a = false;
-        is_state_change_b = false;
         cur_pac = "Initialize PackageName";
         cur_act = "Initialize ClassName";
         packageName = getPackageName();
@@ -621,7 +628,7 @@ public class MyAccessibilityService extends AccessibilityService {
             keyWordList = new ArrayList<>();
             keyWordList.add("跳过");
         }
-        future_v = future_a = future_b = executorService.schedule(new Runnable() {
+        future_v = future_a = executorService.schedule(new Runnable() {
             @Override
             public void run() {
             }
@@ -963,7 +970,6 @@ public class MyAccessibilityService extends AccessibilityService {
                 });
 
                 addButton.setOnClickListener(new View.OnClickListener() {
-                    MyMethodClass.DrawAllNode drawAllNode;
                     WidgetButtonDescribe widgetDescribe;
                     SkipPositionDescribe positionDescribe;
 
@@ -1091,7 +1097,58 @@ public class MyAccessibilityService extends AccessibilityService {
                                     layout_add.removeAllViews();
                                     ArrayList<AccessibilityNodeInfo> roots = new ArrayList<>();
                                     roots.add(root);
-                                    drawAllNode.draw(roots);
+                                    ArrayList<AccessibilityNodeInfo> nodeList = new ArrayList<>();
+                                    findAllNode(roots, nodeList);
+                                    Collections.sort(nodeList, new Comparator<AccessibilityNodeInfo>() {
+                                        @Override
+                                        public int compare(AccessibilityNodeInfo a, AccessibilityNodeInfo b) {
+                                            Rect rectA = new Rect();
+                                            Rect rectB = new Rect();
+                                            a.getBoundsInScreen(rectA);
+                                            b.getBoundsInScreen(rectB);
+                                            return rectB.width() * rectB.height() - rectA.width() * rectA.height();
+                                        }
+                                    });
+                                    for (final AccessibilityNodeInfo e : nodeList) {
+                                        final Rect temRect = new Rect();
+                                        e.getBoundsInScreen(temRect);
+                                        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(temRect.width(), temRect.height());
+                                        params.leftMargin = temRect.left;
+                                        params.topMargin = temRect.top;
+                                        final ImageView img = new ImageView(MyAccessibilityService.this);
+                                        img.setBackgroundResource(R.drawable.node);
+                                        img.setFocusableInTouchMode(true);
+                                        img.setOnClickListener(new View.OnClickListener() {
+                                            @Override
+                                            public void onClick(View v) {
+                                                v.requestFocus();
+                                            }
+                                        });
+                                        img.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                                            @Override
+                                            public void onFocusChange(View v, boolean hasFocus) {
+                                                if (hasFocus) {
+                                                    widgetDescribe.bonus = temRect;
+                                                    widgetDescribe.clickable = e.isClickable();
+                                                    widgetDescribe.className = e.getClassName().toString();
+                                                    CharSequence cId = e.getViewIdResourceName();
+                                                    widgetDescribe.idName = cId == null ? "" : cId.toString();
+                                                    CharSequence cDesc = e.getContentDescription();
+                                                    widgetDescribe.describe = cDesc == null ? "" : cDesc.toString();
+                                                    CharSequence cText = e.getText();
+                                                    widgetDescribe.text = cText == null ? "" : cText.toString();
+                                                    saveWidgetButton.setEnabled(true);
+                                                    pacName.setText(widgetDescribe.packageName);
+                                                    actName.setText(widgetDescribe.activityName);
+                                                    widget.setText("Clickable:" + (e.isClickable() ? "true" : "false") + " " + "Bonus:" + temRect.toShortString() + " " + "Id:" + (cId == null ? "无" : cId.toString().substring(cId.toString().indexOf("id/") + 3)) + " " + "Desc:" + (cDesc == null ? "无" : cDesc.toString()) + " " + "Text:" + (cText == null ? "无" : cText.toString()));
+                                                    v.setBackgroundResource(R.drawable.node_focus);
+                                                } else {
+                                                    v.setBackgroundResource(R.drawable.node);
+                                                }
+                                            }
+                                        });
+                                        layout_add.addView(img, params);
+                                    }
                                     bParams.alpha = 0.5f;
                                     bParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
                                     windowManager.updateViewLayout(layout_win, bParams);
@@ -1170,59 +1227,6 @@ public class MyAccessibilityService extends AccessibilityService {
                                 cParams = null;
                             }
                         });
-                        drawAllNode = new MyMethodClass.DrawAllNode() {
-                            @Override
-                            public void draw(ArrayList<AccessibilityNodeInfo> roots) {
-                                ArrayList<AccessibilityNodeInfo> list = new ArrayList<>();
-                                for (final AccessibilityNodeInfo e : roots) {
-                                    if (e == null) continue;
-                                    final Rect temRect = new Rect();
-                                    e.getBoundsInScreen(temRect);
-                                    FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(temRect.width(), temRect.height());
-                                    params.leftMargin = temRect.left;
-                                    params.topMargin = temRect.top;
-                                    final ImageView img = new ImageView(MyAccessibilityService.this);
-                                    img.setBackgroundResource(R.drawable.node);
-                                    img.setFocusableInTouchMode(true);
-                                    img.setOnClickListener(new View.OnClickListener() {
-                                        @Override
-                                        public void onClick(View v) {
-                                            v.requestFocus();
-                                        }
-                                    });
-                                    img.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-                                        @Override
-                                        public void onFocusChange(View v, boolean hasFocus) {
-                                            if (hasFocus) {
-                                                widgetDescribe.bonus = temRect;
-                                                widgetDescribe.clickable = e.isClickable();
-                                                widgetDescribe.className = e.getClassName().toString();
-                                                CharSequence cId = e.getViewIdResourceName();
-                                                widgetDescribe.idName = cId == null ? "" : cId.toString();
-                                                CharSequence cDesc = e.getContentDescription();
-                                                widgetDescribe.describe = cDesc == null ? "" : cDesc.toString();
-                                                CharSequence cText = e.getText();
-                                                widgetDescribe.text = cText == null ? "" : cText.toString();
-                                                saveWidgetButton.setEnabled(true);
-                                                pacName.setText(widgetDescribe.packageName);
-                                                actName.setText(widgetDescribe.activityName);
-                                                widget.setText("Clickable:" + (e.isClickable() ? "true" : "false") + " " + "Bonus:" + temRect.toShortString() + " " + "Id:" + (cId == null ? "无" : cId.toString().substring(cId.toString().indexOf("id/") + 3)) + " " + "Desc:" + (cDesc == null ? "无" : cDesc.toString()) + " " + "Text:" + (cText == null ? "无" : cText.toString()));
-                                                v.setBackgroundResource(R.drawable.node_focus);
-                                            } else {
-                                                v.setBackgroundResource(R.drawable.node);
-                                            }
-                                        }
-                                    });
-                                    layout_add.addView(img, params);
-                                    for (int n = 0; n < e.getChildCount(); n++) {
-                                        list.add(e.getChild(n));
-                                    }
-                                }
-                                if (!list.isEmpty()) {
-                                    draw(list);
-                                }
-                            }
-                        };
                         windowManager.addView(layout_win, bParams);
                         windowManager.addView(adv_view, aParams);
                         windowManager.addView(target_xy, cParams);
