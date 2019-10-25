@@ -18,8 +18,8 @@ public class ScreenLock {
 
     public ScreenLock(Context context) {
         this.context = context;
-        devicePolicyManager = (DevicePolicyManager) context.getSystemService(context.DEVICE_POLICY_SERVICE);
-        windowManager = (WindowManager) context.getSystemService(context.WINDOW_SERVICE);
+        devicePolicyManager = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+        windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
     }
 
     public void showLockFloat() {
@@ -44,7 +44,12 @@ public class ScreenLock {
                 long end = System.currentTimeMillis();
                 if ((end - start) < 800) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        MyAccessibilityService.handler.sendEmptyMessage(0x01);
+                        if (MyAccessibilityService.mainFunctions != null) {
+                            MyAccessibilityService.mainFunctions.handler.sendEmptyMessage(0x01);
+                        }
+                        if (MyAccessibilityServiceNoGesture.mainFunctions != null) {
+                            MyAccessibilityServiceNoGesture.mainFunctions.handler.sendEmptyMessage(0x01);
+                        }
                     } else {
                         devicePolicyManager.lockNow();
                     }

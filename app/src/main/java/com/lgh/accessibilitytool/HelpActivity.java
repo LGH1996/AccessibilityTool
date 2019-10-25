@@ -1,14 +1,15 @@
 package com.lgh.accessibilitytool;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
 public class HelpActivity extends Activity {
 
@@ -51,5 +52,12 @@ public class HelpActivity extends Activity {
     @JavascriptInterface
     public void setAutoRemove(boolean b) {
         autoRemove = b;
+    }
+
+    @JavascriptInterface
+    public void chooseService(){
+        Intent intent_abs = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        intent_abs.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(intent_abs);
     }
 }

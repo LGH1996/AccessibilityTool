@@ -11,6 +11,7 @@
       var arr = new Array();
       var h1 = $("h1");
       var check = $("#check");
+      var choose = $("#choose");
       check.attr("checked", HelpActivity.getAutoRemove());
       h1.each(function () {
         var next = $(this).next();
@@ -20,16 +21,17 @@
       h1.click(function () {
         var ul = $(this).next();
         var img = $(this).children("img");
+        var height = arr[$(this).parent().index()];
         if (ul.css("height") == "0px") {
           ul.animate({
-            height: arr[$(this).parent().index()] + "px"
-          }, 1000);
-          img.css("animation", "hor " + "1000ms " + "linear " + "forwards");
+            height: height + "px"
+          }, height);
+          img.css("animation", "hor " + height + "ms " + "linear " + "forwards");
         } else {
           ul.animate({
             height: '0px'
-          }, 1000);
-          img.css("animation", "ver " + "1000ms " + "linear " + "forwards");
+          }, height);
+          img.css("animation", "ver " + height + "ms " + "linear " + "forwards");
         }
       });
       check.click(function () {
@@ -38,6 +40,9 @@
         } else {
           HelpActivity.setAutoRemove(false);
         }
+      });
+      choose.click(function () {
+        HelpActivity.chooseService();
       });
     });
   </script>
@@ -175,15 +180,20 @@
   <div>
     <h1>八、更多相关内容 <img src="d.png" /> </h1>
     <ul>
-      <li>当前页面自动从最近任务列表中隐藏：<input id="check" type="checkbox" style="position: relative; top:3px"></li>
-      <li>作者联系方式：2281442260（QQ）</li>
-      <li>github地址：<a style="text-decoration: none;word-break: break-all;"
+      <li>
+        某些机型会因为在无障碍服务中申请了模拟点击功能而产生卡顿掉帧的情况。如果出现了上述问题，建议切换为不支持坐标点击的服务。注意:不能同时开启两个服务，否则会造成冲突，请确保当前有且只有一个服务处于开启状态。
+        <button id="choose"
+          style="position:relative; top:-1px; border-radius:5px; font-size:10px; padding:1px;">切换无障碍服务</button>
+      </li>
+      <li>当前页面自动从最近任务列表中隐藏：<input id="check" type="checkbox" style="position:relative; top:3px;" /></li>
+      <li>可在以下地址中下载最新版本。github地址：<a style="text-decoration:none; word-break:break-all;"
           href="https://github.com/LGH1996/AccessibilityTool"
           target="_blank">https://github.com/LGH1996/AccessibilityTool</a>
       </li>
+      <li>作者联系方式：2281442260（QQ）</li>
+      <li>支持作者：</li>
       <li>
-        <p>支持作者：</p><img src="pay.jpg"
-          style="display: block; margin: auto; width: 100%; height: auto; border-radius: 10px"></img>
+        <img src="pay.jpg" style="display: block; margin: auto; width: 100%; height: auto; border-radius: 10px" />
       </li>
     </ul>
   </div>

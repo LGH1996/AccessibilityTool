@@ -10,7 +10,11 @@ public class MyScreenOffReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         // TODO: This method is called when the BroadcastReceiver is receiving
         // an Intent broadcast.
-        if (MyAccessibilityService.handler != null)
-            MyAccessibilityService.handler.sendEmptyMessage(0x03);
+        if (MyAccessibilityService.mainFunctions != null) {
+            MyAccessibilityService.mainFunctions.handler.sendEmptyMessage(0x03);
+        }
+        if (MyAccessibilityServiceNoGesture.mainFunctions != null) {
+            MyAccessibilityServiceNoGesture.mainFunctions.handler.sendEmptyMessage(0x03);
+        }
     }
 }
