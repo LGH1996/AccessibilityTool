@@ -55,7 +55,7 @@ public class HelpActivity extends Activity {
     }
 
     @JavascriptInterface
-    public void chooseService(){
+    public void chooseService() {
         Intent intent_abs = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
         intent_abs.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent_abs);

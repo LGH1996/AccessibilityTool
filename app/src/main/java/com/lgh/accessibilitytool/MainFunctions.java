@@ -684,8 +684,6 @@ public class MainFunctions {
         pac_white.removeAll(pac_remove);
         pac_launch.removeAll(pac_white);
         pac_launch.removeAll(pac_remove);
-
-
     }
 
     /**

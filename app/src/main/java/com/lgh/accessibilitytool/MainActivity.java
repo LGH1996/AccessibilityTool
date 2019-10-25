@@ -22,12 +22,12 @@ public class MainActivity extends Activity {
         try {
             Context context = getApplicationContext();
 
-            if (MyAccessibilityService.mainFunctions == null && MyAccessibilityServiceNoGesture.mainFunctions == null){
+            if (MyAccessibilityService.mainFunctions == null && MyAccessibilityServiceNoGesture.mainFunctions == null) {
                 Intent intent_abs = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
                 intent_abs.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent_abs);
                 Toast.makeText(context, "请根据情况打开其中一个无障碍服务", Toast.LENGTH_SHORT).show();
-            } else if (MyAccessibilityService.mainFunctions != null && MyAccessibilityServiceNoGesture.mainFunctions != null){
+            } else if (MyAccessibilityService.mainFunctions != null && MyAccessibilityServiceNoGesture.mainFunctions != null) {
                 Intent intent_abs = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
                 intent_abs.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent_abs);
@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
                     MyAccessibilityService.mainFunctions.handler.sendEmptyMessage(0x00);
                 }
 
-                if (MyAccessibilityServiceNoGesture.mainFunctions != null){
+                if (MyAccessibilityServiceNoGesture.mainFunctions != null) {
                     MyAccessibilityServiceNoGesture.mainFunctions.handler.sendEmptyMessage(0x00);
                 }
             }

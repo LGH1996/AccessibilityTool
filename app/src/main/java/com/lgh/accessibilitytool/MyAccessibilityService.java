@@ -31,7 +31,7 @@ public class MyAccessibilityService extends AccessibilityService {
         }
         mainFunctions = new MainFunctions(this);
         mainFunctions.onServiceConnected();
-        if (MyAccessibilityServiceNoGesture.mainFunctions != null){
+        if (MyAccessibilityServiceNoGesture.mainFunctions != null) {
             MyAccessibilityServiceNoGesture.mainFunctions.handler.sendEmptyMessage(0x04);
         }
     }
