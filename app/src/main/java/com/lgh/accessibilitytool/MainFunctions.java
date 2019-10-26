@@ -135,7 +135,139 @@ public class MainFunctions {
 
     public void onServiceConnected() {
         try {
-            initializeData();
+            is_release_up = true;
+            is_release_down = true;
+            double_press = false;
+            is_state_change_a = false;
+            cur_pac = "Initialize PackageName";
+            cur_act = "Initialize ClassName";
+            packageName = service.getPackageName();
+            audioManager = (AudioManager) service.getSystemService(AccessibilityService.AUDIO_SERVICE);
+            vibrator = (Vibrator) service.getSystemService(AccessibilityService.VIBRATOR_SERVICE);
+            sharedPreferences = service.getSharedPreferences(packageName, AccessibilityService.MODE_PRIVATE);
+            windowManager = (WindowManager) service.getSystemService(AccessibilityService.WINDOW_SERVICE);
+            devicePolicyManager = (DevicePolicyManager) service.getSystemService(AccessibilityService.DEVICE_POLICY_SERVICE);
+            clipboardManager = (ClipboardManager) service.getSystemService(AccessibilityService.CLIPBOARD_SERVICE);
+            packageManager = service.getPackageManager();
+            executorService = Executors.newSingleThreadScheduledExecutor();
+            mediaButtonControl = new MediaButtonControl(service);
+            screenLightness = new ScreenLightness(service);
+            screenLock = new ScreenLock(service);
+            installReceiver = new MyInstallReceiver();
+            screenOnReceiver = new MyScreenOffReceiver();
+            vibration_strength = sharedPreferences.getInt(VIBRATION_STRENGTH, 50);
+            pac_msg = sharedPreferences.getStringSet(PAC_MSG, new HashSet<String>());
+            pac_white = sharedPreferences.getStringSet(PAC_WHITE, null);
+            control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(service, MyDeviceAdminReceiver.class)));
+            control_lightness = sharedPreferences.getBoolean(CONTROL_LIGHTNESS, false);
+            record_clip = sharedPreferences.getBoolean(RECORD_CLIP, true);
+            if (control_lock) screenLock.showLockFloat();
+            if (control_lightness) screenLightness.showFloat();
+            asi = service.getServiceInfo();
+            asi.eventTypes = sharedPreferences.getInt(EVENT_TYPES, AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
+            asi.flags = sharedPreferences.getInt(FLAGS, asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
+            service.setServiceInfo(asi);
+            updatePackage();
+            IntentFilter filter_install = new IntentFilter();
+            filter_install.addAction(Intent.ACTION_PACKAGE_ADDED);
+            filter_install.addAction(Intent.ACTION_PACKAGE_REMOVED);
+            filter_install.addDataScheme("package");
+            service.registerReceiver(installReceiver, filter_install);
+            IntentFilter filter_screen = new IntentFilter();
+            filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
+            service.registerReceiver(screenOnReceiver, filter_screen);
+            File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+            if (!file.exists()) file.mkdirs();
+            savePath = file.getAbsolutePath();
+            primaryClipChangedListener = new ClipboardManager.OnPrimaryClipChangedListener() {
+                String old_clip = "";
+
+                @Override
+                public void onPrimaryClipChanged() {
+                    try {
+                        if (cur_pac.equals(packageName)) return;
+                        ClipData clipData = clipboardManager.getPrimaryClip();
+                        if (clipData == null) return;
+                        StringBuilder builder = new StringBuilder();
+                        for (int n = 0; n < clipData.getItemCount(); n++) {
+                            ClipData.Item item = clipData.getItemAt(n);
+                            CharSequence str = item.getText();
+                            if (str == null) continue;
+                            builder.append(str.toString().replaceAll("\\s", ""));
+                        }
+                        String text = builder.toString();
+                        if (text.isEmpty() || text.equals(old_clip)) return;
+                        old_clip = text;
+                        FileWriter writer = new FileWriter(savePath + "/" + "ClipContentCache.txt", true);
+                        writer.append(text);
+                        writer.append("\n");
+                        writer.close();
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            if (record_clip) {
+                clipboardManager.addPrimaryClipChangedListener(primaryClipChangedListener);
+            }
+            String aJson = sharedPreferences.getString(ACTIVITY_WIDGET, null);
+            if (aJson != null) {
+                Type type = new TypeToken<HashMap<String, Set<WidgetButtonDescribe>>>() {
+                }.getType();
+                act_widget = new Gson().fromJson(aJson, type);
+            } else {
+                act_widget = new HashMap<>();
+            }
+            String bJson = sharedPreferences.getString(ACTIVITY_POSITION, null);
+            if (bJson != null) {
+                Type type = new TypeToken<HashMap<String, SkipPositionDescribe>>() {
+                }.getType();
+                act_position = new Gson().fromJson(bJson, type);
+            } else {
+                act_position = new HashMap<>();
+            }
+            String cJson = sharedPreferences.getString(KEY_WORD_LIST, null);
+            if (cJson != null) {
+                Type type = new TypeToken<ArrayList<String>>() {
+                }.getType();
+                keyWordList = new Gson().fromJson(cJson, type);
+            } else {
+                keyWordList = new ArrayList<>();
+                keyWordList.add("跳过");
+            }
+            future_v = future_a = executorService.schedule(new Runnable() {
+                @Override
+                public void run() {
+                }
+            }, 0, TimeUnit.MILLISECONDS);
+            handler = new Handler(new Handler.Callback() {
+                @Override
+                public boolean handleMessage(Message msg) {
+                    switch (msg.what) {
+                        case 0x00:
+                            mainUI();
+                            break;
+                        case 0x01:
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN);
+                            }
+                            break;
+                        case 0x02:
+                            updatePackage();
+                            mediaButtonControl.updateMusicSet();
+                            break;
+                        case 0x03:
+                            cur_pac = "ScreenOff PackageName";
+                            break;
+                        case 0x04:
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                service.disableSelf();
+                            }
+                            break;
+                    }
+                    return true;
+                }
+            });
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -499,145 +631,6 @@ public class MainFunctions {
         widgetSet = null;
         is_state_change_a = false;
         future_a.cancel(false);
-    }
-
-    /**
-     * 初始化各种数据
-     */
-    private void initializeData() {
-        is_release_up = true;
-        is_release_down = true;
-        double_press = false;
-        is_state_change_a = false;
-        cur_pac = "Initialize PackageName";
-        cur_act = "Initialize ClassName";
-        packageName = service.getPackageName();
-        audioManager = (AudioManager) service.getSystemService(AccessibilityService.AUDIO_SERVICE);
-        vibrator = (Vibrator) service.getSystemService(AccessibilityService.VIBRATOR_SERVICE);
-        sharedPreferences = service.getSharedPreferences(packageName, AccessibilityService.MODE_PRIVATE);
-        windowManager = (WindowManager) service.getSystemService(AccessibilityService.WINDOW_SERVICE);
-        devicePolicyManager = (DevicePolicyManager) service.getSystemService(AccessibilityService.DEVICE_POLICY_SERVICE);
-        clipboardManager = (ClipboardManager) service.getSystemService(AccessibilityService.CLIPBOARD_SERVICE);
-        packageManager = service.getPackageManager();
-        executorService = Executors.newSingleThreadScheduledExecutor();
-        mediaButtonControl = new MediaButtonControl(service);
-        screenLightness = new ScreenLightness(service);
-        screenLock = new ScreenLock(service);
-        installReceiver = new MyInstallReceiver();
-        screenOnReceiver = new MyScreenOffReceiver();
-        vibration_strength = sharedPreferences.getInt(VIBRATION_STRENGTH, 50);
-        pac_msg = sharedPreferences.getStringSet(PAC_MSG, new HashSet<String>());
-        pac_white = sharedPreferences.getStringSet(PAC_WHITE, null);
-        control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(service, MyDeviceAdminReceiver.class)));
-        control_lightness = sharedPreferences.getBoolean(CONTROL_LIGHTNESS, false);
-        record_clip = sharedPreferences.getBoolean(RECORD_CLIP, true);
-        if (control_lock) screenLock.showLockFloat();
-        if (control_lightness) screenLightness.showFloat();
-        asi = service.getServiceInfo();
-        asi.eventTypes = sharedPreferences.getInt(EVENT_TYPES, AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
-        asi.flags = sharedPreferences.getInt(FLAGS, asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
-        service.setServiceInfo(asi);
-        updatePackage();
-        IntentFilter filter_install = new IntentFilter();
-        filter_install.addAction(Intent.ACTION_PACKAGE_ADDED);
-        filter_install.addAction(Intent.ACTION_PACKAGE_REMOVED);
-        filter_install.addDataScheme("package");
-        service.registerReceiver(installReceiver, filter_install);
-        IntentFilter filter_screen = new IntentFilter();
-        filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
-        service.registerReceiver(screenOnReceiver, filter_screen);
-        File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-        if (!file.exists()) file.mkdirs();
-        savePath = file.getAbsolutePath();
-        primaryClipChangedListener = new ClipboardManager.OnPrimaryClipChangedListener() {
-            String old_clip = "";
-
-            @Override
-            public void onPrimaryClipChanged() {
-                try {
-                    if (cur_pac.equals(packageName)) return;
-                    ClipData clipData = clipboardManager.getPrimaryClip();
-                    if (clipData == null) return;
-                    StringBuilder builder = new StringBuilder();
-                    for (int n = 0; n < clipData.getItemCount(); n++) {
-                        ClipData.Item item = clipData.getItemAt(n);
-                        CharSequence str = item.getText();
-                        if (str == null) continue;
-                        builder.append(str.toString().replaceAll("\\s", ""));
-                    }
-                    String text = builder.toString();
-                    if (text.isEmpty() || text.equals(old_clip)) return;
-                    old_clip = text;
-                    FileWriter writer = new FileWriter(savePath + "/" + "ClipContentCache.txt", true);
-                    writer.append(text);
-                    writer.append("\n");
-                    writer.close();
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-        if (record_clip) {
-            clipboardManager.addPrimaryClipChangedListener(primaryClipChangedListener);
-        }
-        String aJson = sharedPreferences.getString(ACTIVITY_WIDGET, null);
-        if (aJson != null) {
-            Type type = new TypeToken<HashMap<String, Set<WidgetButtonDescribe>>>() {
-            }.getType();
-            act_widget = new Gson().fromJson(aJson, type);
-        } else {
-            act_widget = new HashMap<>();
-        }
-        String bJson = sharedPreferences.getString(ACTIVITY_POSITION, null);
-        if (bJson != null) {
-            Type type = new TypeToken<HashMap<String, SkipPositionDescribe>>() {
-            }.getType();
-            act_position = new Gson().fromJson(bJson, type);
-        } else {
-            act_position = new HashMap<>();
-        }
-        String cJson = sharedPreferences.getString(KEY_WORD_LIST, null);
-        if (cJson != null) {
-            Type type = new TypeToken<ArrayList<String>>() {
-            }.getType();
-            keyWordList = new Gson().fromJson(cJson, type);
-        } else {
-            keyWordList = new ArrayList<>();
-            keyWordList.add("跳过");
-        }
-        future_v = future_a = executorService.schedule(new Runnable() {
-            @Override
-            public void run() {
-            }
-        }, 0, TimeUnit.MILLISECONDS);
-        handler = new Handler(new Handler.Callback() {
-            @Override
-            public boolean handleMessage(Message msg) {
-                switch (msg.what) {
-                    case 0x00:
-                        mainUI();
-                        break;
-                    case 0x01:
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN);
-                        }
-                        break;
-                    case 0x02:
-                        updatePackage();
-                        mediaButtonControl.updateMusicSet();
-                        break;
-                    case 0x03:
-                        cur_pac = "ScreenOff PackageName";
-                        break;
-                    case 0x04:
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                            service.disableSelf();
-                        }
-                        break;
-                }
-                return true;
-            }
-        });
     }
 
     /**
