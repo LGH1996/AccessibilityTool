@@ -7,8 +7,6 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.admin.DevicePolicyManager;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -86,18 +84,18 @@ public class MainFunctions {
     private static final String TAG = "MyAccessibilityService";
     private static final String CONTROL_LIGHTNESS = "control_lightness";
     private static final String CONTROL_LOCK = "control_lock";
-    private static final String RECORD_CLIP = "record_clip";
     private static final String EVENT_TYPES = "event_type";
     private static final String FLAGS = "flags";
     private static final String PAC_MSG = "pac_msg";
     private static final String VIBRATION_STRENGTH = "vibration_strength";
+    private static final String SUPPORT_SYSTEM_MUSIC = "support_system_music";
     private static final String ACTIVITY_POSITION = "act_position";
     private static final String ACTIVITY_WIDGET = "act_widget";
     private static final String PAC_WHITE = "pac_white";
     private static final String KEY_WORD_LIST = "keyWordList";
     private boolean double_press;
     private boolean is_release_up, is_release_down;
-    private boolean control_lightness, control_lock, record_clip;
+    private boolean control_lightness, control_lock;
     private boolean is_state_change_a;
     private long star_up, star_down;
     private int win_state_count, vibration_strength;
@@ -122,9 +120,8 @@ public class MainFunctions {
     private ScreenLock screenLock;
     private MyInstallReceiver installReceiver;
     private MyScreenOffReceiver screenOnReceiver;
-    private ClipboardManager clipboardManager;
-    private ClipboardManager.OnPrimaryClipChangedListener primaryClipChangedListener;
     private Set<WidgetButtonDescribe> widgetSet;
+    private SkipPositionDescribe skipPositionDescribe;
     private WindowManager.LayoutParams aParams, bParams, cParams;
     private View adv_view, layout_win;
     private ImageView target_xy;
@@ -147,7 +144,6 @@ public class MainFunctions {
             sharedPreferences = service.getSharedPreferences(packageName, AccessibilityService.MODE_PRIVATE);
             windowManager = (WindowManager) service.getSystemService(AccessibilityService.WINDOW_SERVICE);
             devicePolicyManager = (DevicePolicyManager) service.getSystemService(AccessibilityService.DEVICE_POLICY_SERVICE);
-            clipboardManager = (ClipboardManager) service.getSystemService(AccessibilityService.CLIPBOARD_SERVICE);
             packageManager = service.getPackageManager();
             executorService = Executors.newSingleThreadScheduledExecutor();
             mediaButtonControl = new MediaButtonControl(service);
@@ -160,7 +156,7 @@ public class MainFunctions {
             pac_white = sharedPreferences.getStringSet(PAC_WHITE, null);
             control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(service, MyDeviceAdminReceiver.class)));
             control_lightness = sharedPreferences.getBoolean(CONTROL_LIGHTNESS, false);
-            record_clip = sharedPreferences.getBoolean(RECORD_CLIP, true);
+            mediaButtonControl.support_SysMusic = sharedPreferences.getBoolean(SUPPORT_SYSTEM_MUSIC, false);
             if (control_lock) screenLock.showLockFloat();
             if (control_lightness) screenLightness.showFloat();
             asi = service.getServiceInfo();
@@ -179,37 +175,6 @@ public class MainFunctions {
             File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
             if (!file.exists()) file.mkdirs();
             savePath = file.getAbsolutePath();
-            primaryClipChangedListener = new ClipboardManager.OnPrimaryClipChangedListener() {
-                String old_clip = "";
-
-                @Override
-                public void onPrimaryClipChanged() {
-                    try {
-                        if (cur_pac.equals(packageName)) return;
-                        ClipData clipData = clipboardManager.getPrimaryClip();
-                        if (clipData == null) return;
-                        StringBuilder builder = new StringBuilder();
-                        for (int n = 0; n < clipData.getItemCount(); n++) {
-                            ClipData.Item item = clipData.getItemAt(n);
-                            CharSequence str = item.getText();
-                            if (str == null) continue;
-                            builder.append(str.toString().replaceAll("\\s", ""));
-                        }
-                        String text = builder.toString();
-                        if (text.isEmpty() || text.equals(old_clip)) return;
-                        old_clip = text;
-                        FileWriter writer = new FileWriter(savePath + "/" + "ClipContentCache.txt", true);
-                        writer.append(text);
-                        writer.append("\n");
-                        writer.close();
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
-                }
-            };
-            if (record_clip) {
-                clipboardManager.addPrimaryClipChangedListener(primaryClipChangedListener);
-            }
             String aJson = sharedPreferences.getString(ACTIVITY_WIDGET, null);
             if (aJson != null) {
                 Type type = new TypeToken<HashMap<String, Set<WidgetButtonDescribe>>>() {
@@ -312,30 +277,30 @@ public class MainFunctions {
                             cur_act = actName;
                             if (is_state_change_a) {
                                 widgetSet = act_widget.get(actName);
-                                final SkipPositionDescribe skipPosition = act_position.get(actName);
-                                if (skipPosition != null) {
+                                skipPositionDescribe = act_position.get(actName);
+                                if (skipPositionDescribe != null) {
                                     closeContentChanged();
-                                    final String temActivity = actName;
                                     executorService.scheduleAtFixedRate(new Runnable() {
                                         int num = 0;
 
                                         @Override
                                         public void run() {
-                                            if (num < skipPosition.number && cur_act.equals(temActivity)) {
-                                                click(skipPosition.x, skipPosition.y, 0, 20);
+                                            if (skipPositionDescribe != null && num < skipPositionDescribe.number && cur_act.equals(skipPositionDescribe.activityName)) {
+                                                click(skipPositionDescribe.x, skipPositionDescribe.y, 0, 20);
                                                 num++;
                                             } else {
+                                                skipPositionDescribe = null;
                                                 throw new RuntimeException();
                                             }
                                         }
-                                    }, skipPosition.delay, skipPosition.period, TimeUnit.MILLISECONDS);
+                                    }, skipPositionDescribe.delay, skipPositionDescribe.period, TimeUnit.MILLISECONDS);
                                 }
                             }
                         }
                     }
                     if (is_state_change_a && pacName.equals(cur_pac)) {
                         AccessibilityNodeInfo root = service.getRootInActiveWindow();
-                        findSkipButton(root);
+                        findSkipButtonByText(root);
                         if (widgetSet != null) {
                             findSkipButtonByWidget(root, widgetSet);
                         }
@@ -344,7 +309,7 @@ public class MainFunctions {
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
                     if (is_state_change_a && !event.getPackageName().equals("com.android.systemui")) {
                         AccessibilityNodeInfo source = event.getSource();
-                        findSkipButton(source);
+                        findSkipButtonByText(source);
                         if (widgetSet != null) {
                             findSkipButtonByWidget(source, widgetSet);
                         }
@@ -503,7 +468,6 @@ public class MainFunctions {
         try {
             service.unregisterReceiver(installReceiver);
             service.unregisterReceiver(screenOnReceiver);
-            clipboardManager.removePrimaryClipChangedListener(primaryClipChangedListener);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -514,7 +478,7 @@ public class MainFunctions {
      * 自动查找启动广告的
      * “跳过”的控件
      */
-    private void findSkipButton(AccessibilityNodeInfo nodeInfo) {
+    private void findSkipButtonByText(AccessibilityNodeInfo nodeInfo) {
         if (nodeInfo == null) return;
         for (int n = 0; n < keyWordList.size(); n++) {
             List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByText(keyWordList.get(n));
@@ -548,35 +512,36 @@ public class MainFunctions {
         listA.add(root);
         while (a < b) {
             AccessibilityNodeInfo node = listA.get(a++);
-            if (node == null) continue;
-            Rect temRect = new Rect();
-            node.getBoundsInScreen(temRect);
-            CharSequence cId = node.getViewIdResourceName();
-            CharSequence cDescribe = node.getContentDescription();
-            CharSequence cText = node.getText();
-            for (WidgetButtonDescribe e : set) {
-                boolean isFind = false;
-                if (temRect.equals(e.bonus)) {
-                    isFind = true;
-                } else if (cId != null && !e.idName.isEmpty() && cId.toString().equals(e.idName)) {
-                    isFind = true;
-                } else if (cDescribe != null && !e.describe.isEmpty() && cDescribe.toString().contains(e.describe)) {
-                    isFind = true;
-                } else if (cText != null && !e.text.isEmpty() && cText.toString().contains(e.text)) {
-                    isFind = true;
-                }
-                if (isFind) {
-                    if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                        if (!node.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                            click(temRect.centerX(), temRect.centerY(), 0, 20);
-                        }
+            if (node != null) {
+                Rect temRect = new Rect();
+                node.getBoundsInScreen(temRect);
+                CharSequence cId = node.getViewIdResourceName();
+                CharSequence cDescribe = node.getContentDescription();
+                CharSequence cText = node.getText();
+                for (WidgetButtonDescribe e : set) {
+                    boolean isFind = false;
+                    if (temRect.equals(e.bonus)) {
+                        isFind = true;
+                    } else if (cId != null && !e.idName.isEmpty() && cId.toString().equals(e.idName)) {
+                        isFind = true;
+                    } else if (cDescribe != null && !e.describe.isEmpty() && cDescribe.toString().contains(e.describe)) {
+                        isFind = true;
+                    } else if (cText != null && !e.text.isEmpty() && cText.toString().contains(e.text)) {
+                        isFind = true;
                     }
-                    closeContentChanged();
-                    return;
+                    if (isFind) {
+                        if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                            if (!node.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                                click(temRect.centerX(), temRect.centerY(), 0, 20);
+                            }
+                        }
+                        closeContentChanged();
+                        return;
+                    }
                 }
-            }
-            for (int n = 0; n < node.getChildCount(); n++) {
-                listB.add(node.getChild(n));
+                for (int n = 0; n < node.getChildCount(); n++) {
+                    listB.add(node.getChild(n));
+                }
             }
             if (a == b) {
                 a = 0;
@@ -695,7 +660,6 @@ public class MainFunctions {
         final Switch switch_skip_advertising = view_main.findViewById(R.id.skip_advertising);
         final Switch switch_volume_control = view_main.findViewById(R.id.volume_control);
         final Switch switch_record_message = view_main.findViewById(R.id.record_message);
-        final Switch switch_record_clip = view_main.findViewById(R.id.record_clip);
         final Switch switch_screen_lightness = view_main.findViewById(R.id.screen_lightness);
         final Switch switch_screen_lock = view_main.findViewById(R.id.screen_lock);
         TextView bt_set = view_main.findViewById(R.id.set);
@@ -705,7 +669,6 @@ public class MainFunctions {
         switch_skip_advertising.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
         switch_volume_control.setChecked((asi.flags & AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) == AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
         switch_record_message.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
-        switch_record_clip.setChecked(record_clip);
         switch_screen_lightness.setChecked(control_lightness);
         switch_screen_lock.setChecked(control_lock && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(componentName)));
 
@@ -1299,7 +1262,9 @@ public class MainFunctions {
             public boolean onLongClick(View v) {
                 View view = inflater.inflate(R.layout.vibration_strength, null);
                 SeekBar seekBar = view.findViewById(R.id.strength);
+                CheckBox checkSys = view.findViewById(R.id.check_sys);
                 seekBar.setProgress(vibration_strength);
+                checkSys.setChecked(mediaButtonControl.support_SysMusic);
                 seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                     @Override
                     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -1314,10 +1279,18 @@ public class MainFunctions {
                     public void onStopTrackingTouch(SeekBar seekBar) {
                     }
                 });
+                checkSys.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                        mediaButtonControl.support_SysMusic = b;
+                    }
+                });
                 AlertDialog dialog_vol = new AlertDialog.Builder(service).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                        sharedPreferences.edit().putInt(VIBRATION_STRENGTH, vibration_strength).apply();
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.putInt(VIBRATION_STRENGTH, vibration_strength).apply();
+                        editor.putBoolean(SUPPORT_SYSTEM_MUSIC, mediaButtonControl.support_SysMusic).apply();
                     }
                 }).create();
                 Window win = dialog_vol.getWindow();
@@ -1488,70 +1461,6 @@ public class MainFunctions {
                 return true;
             }
         });
-        switch_record_clip.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                try {
-                    final File file = new File(savePath + "/" + "ClipContentCache.txt");
-                    final View view = inflater.inflate(R.layout.view_clip, null);
-                    final AlertDialog dialog_clip = new AlertDialog.Builder(service).setView(view).create();
-                    final EditText textView = view.findViewById(R.id.editText);
-                    TextView but_empty = view.findViewById(R.id.empty);
-                    TextView but_cancel = view.findViewById(R.id.cancel);
-                    TextView but_sure = view.findViewById(R.id.sure);
-                    but_empty.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            textView.setText("");
-                        }
-                    });
-                    but_cancel.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            dialog_clip.dismiss();
-                        }
-                    });
-                    but_sure.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            try {
-                                FileWriter writer = new FileWriter(file, false);
-                                writer.write(textView.getText().toString());
-                                writer.close();
-                                dialog_clip.dismiss();
-                            } catch (Throwable e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    });
-                    if (file.exists()) {
-                        StringBuilder builder = new StringBuilder();
-                        Scanner scanner = new Scanner(file);
-                        while (scanner.hasNextLine()) {
-                            builder.append(scanner.nextLine() + "\n");
-                        }
-                        scanner.close();
-                        textView.setText(builder.toString());
-                        textView.setSelection(builder.length());
-                    } else {
-                        textView.setHint("当前文件内容为空");
-                    }
-                    Window win = dialog_clip.getWindow();
-                    win.setBackgroundDrawableResource(R.drawable.dialogbackground);
-                    win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
-                    win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-                    win.setDimAmount(0);
-                    dialog_clip.show();
-                    WindowManager.LayoutParams params = win.getAttributes();
-                    params.width = width;
-                    win.setAttributes(params);
-                    dialog_main.dismiss();
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-                return true;
-            }
-        });
         switch_screen_lightness.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
@@ -1565,7 +1474,7 @@ public class MainFunctions {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked && !devicePolicyManager.isAdminActive(componentName) && (Build.VERSION.SDK_INT < Build.VERSION_CODES.P)) {
                     Intent intent = new Intent().setComponent(new ComponentName("com.android.settings", "com.android.settings.DeviceAdminSettings"));
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     service.startActivity(intent);
                     control_lock = false;
                     dialog_main.dismiss();
@@ -1577,7 +1486,7 @@ public class MainFunctions {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 service.startActivity(intent);
                 dialog_main.dismiss();
             }
@@ -1586,7 +1495,7 @@ public class MainFunctions {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(service, HelpActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 service.startActivity(intent);
                 dialog_main.dismiss();
             }
@@ -1623,19 +1532,6 @@ public class MainFunctions {
                 } else {
                     asi.eventTypes &= ~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
                     editor.putInt(EVENT_TYPES, asi.eventTypes & (~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED)).apply();
-                }
-                if (switch_record_clip.isChecked()) {
-                    if (!record_clip) {
-                        clipboardManager.addPrimaryClipChangedListener(primaryClipChangedListener);
-                        record_clip = true;
-                        editor.putBoolean(RECORD_CLIP, true).apply();
-                    }
-                } else {
-                    if (record_clip) {
-                        clipboardManager.removePrimaryClipChangedListener(primaryClipChangedListener);
-                        record_clip = false;
-                        editor.putBoolean(RECORD_CLIP, false).apply();
-                    }
                 }
                 if (switch_screen_lightness.isChecked()) {
                     if (!control_lightness) {

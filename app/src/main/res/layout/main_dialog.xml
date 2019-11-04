@@ -72,22 +72,6 @@
                 android:src="@color/divideLine" />
 
             <Switch
-                android:id="@+id/record_clip"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginTop="10dp"
-                android:layout_marginBottom="10dp"
-                android:layout_weight="1"
-                android:checked="true"
-                android:hint="记录剪贴内容"
-                android:textColorHint="@color/textColor" />
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="1px"
-                android:src="@color/divideLine" />
-
-            <Switch
                 android:id="@+id/screen_lightness"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
