@@ -26,12 +26,12 @@ public class MainActivity extends Activity {
                 Intent intent_abs = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
                 intent_abs.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent_abs);
-                Toast.makeText(context, "请根据情况打开其中一个无障碍服务", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "请打开其中一个无障碍服务", Toast.LENGTH_SHORT).show();
             } else if (MyAccessibilityService.mainFunctions != null && MyAccessibilityServiceNoGesture.mainFunctions != null) {
                 Intent intent_abs = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
                 intent_abs.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent_abs);
-                Toast.makeText(context, "无障碍服务冲突，请根据情况关闭其中一个", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "无障碍服务冲突，请关闭其中一个", Toast.LENGTH_SHORT).show();
             } else {
 
                 if (MyAccessibilityService.mainFunctions != null) {

@@ -1,41 +1,67 @@
 package com.lgh.accessibilitytool;
 
+import android.app.AlertDialog;
 import android.app.admin.DevicePolicyManager;
 import android.content.Context;
-import android.content.res.Resources;
+import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.graphics.PixelFormat;
 import android.os.Build;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 
 public class ScreenLock {
+
+    private static String WIDTH = "ScreenLock_Width";
+    private static String HEIGHT = "ScreenLock_Height";
+    private static String POSITION_X = "ScreenLock_PositionX";
+    private static String POSITION_Y = "ScreenLock_PositionY";
+    private int width, height, px, py;
     private Context context;
     private DevicePolicyManager devicePolicyManager;
+    private SharedPreferences sharedPreferences;
     private WindowManager windowManager;
-    private ImageView imageView_left, imageView_right;
+    private DisplayMetrics metrics;
+    private ImageView imageView;
+    private WindowManager.LayoutParams params;
+    private SeekBar seekBar_W;
+    private SeekBar seekBar_H;
+    private SeekBar seekBar_X;
+    private SeekBar seekBar_Y;
 
     public ScreenLock(Context context) {
         this.context = context;
         devicePolicyManager = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
         windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        sharedPreferences = context.getSharedPreferences(context.getPackageName(), Context.MODE_PRIVATE);
+        metrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getRealMetrics(metrics);
+        width = sharedPreferences.getInt(WIDTH, metrics.widthPixels / 20);
+        height = sharedPreferences.getInt(HEIGHT, metrics.widthPixels / 20);
+        px = sharedPreferences.getInt(POSITION_X, metrics.widthPixels - width);
+        py = sharedPreferences.getInt(POSITION_Y, metrics.heightPixels - height);
     }
 
     public void showLockFloat() {
-        if (imageView_left != null && imageView_right != null) return;
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams();
+        if (imageView != null) return;
+        params = new WindowManager.LayoutParams();
         params.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
-        params.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        params.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         params.format = PixelFormat.TRANSPARENT;
-        params.alpha = 0f;
-        params.y = 10;
-        Resources resources = context.getResources();
-        int resourceId = resources.getIdentifier("status_bar_height", "dimen", "android");
-        params.width = resources.getDisplayMetrics().widthPixels / 10;
-        params.height = resources.getDimensionPixelSize(resourceId) - 20;
-        imageView_left = new ImageView(context);
-        imageView_right = new ImageView(context);
+        params.gravity = Gravity.START | Gravity.TOP;
+        params.alpha = 0.5f;
+        params.width = width;
+        params.height = height;
+        params.x = px;
+        params.y = py;
+        imageView = new ImageView(context);
+        imageView.setBackgroundColor(0x00000000);
         View.OnClickListener clickListener = new View.OnClickListener() {
             long start = System.currentTimeMillis();
 
@@ -57,24 +83,109 @@ public class ScreenLock {
                 start = end;
             }
         };
-        imageView_left.setOnClickListener(clickListener);
-        imageView_right.setOnClickListener(clickListener);
-        params.gravity = Gravity.START | Gravity.TOP;
-        windowManager.addView(imageView_left, params);
-        params.gravity = Gravity.END | Gravity.TOP;
-        windowManager.addView(imageView_right, params);
+        imageView.setOnClickListener(clickListener);
+        windowManager.addView(imageView, params);
     }
 
     public void dismiss() {
-        if (imageView_left != null) {
-            windowManager.removeViewImmediate(imageView_left);
-            imageView_left = null;
-
+        if (imageView != null) {
+            windowManager.removeViewImmediate(imageView);
+            imageView = null;
+            params = null;
         }
-        if (imageView_right != null) {
-            windowManager.removeViewImmediate(imageView_right);
-            imageView_right = null;
+        if (seekBar_W != null && seekBar_H != null && seekBar_X != null && seekBar_Y != null) {
+            seekBar_W.setEnabled(false);
+            seekBar_H.setEnabled(false);
+            seekBar_X.setEnabled(false);
+            seekBar_Y.setEnabled(false);
         }
     }
 
+    public void showSetAreaDialog() {
+        View view = LayoutInflater.from(context).inflate(R.layout.screen_lock_position, null);
+        seekBar_W = view.findViewById(R.id.seekBar_w);
+        seekBar_H = view.findViewById(R.id.seekBar_h);
+        seekBar_X = view.findViewById(R.id.seekBar_x);
+        seekBar_Y = view.findViewById(R.id.seekBar_y);
+        seekBar_W.setMax(metrics.widthPixels / 4);
+        seekBar_H.setMax(metrics.heightPixels / 4);
+        seekBar_X.setMax(metrics.widthPixels);
+        seekBar_Y.setMax(metrics.heightPixels);
+        seekBar_W.setProgress(width);
+        seekBar_H.setProgress(height);
+        seekBar_X.setProgress(px);
+        seekBar_Y.setProgress(py);
+        if (imageView == null) {
+            seekBar_W.setEnabled(false);
+            seekBar_H.setEnabled(false);
+            seekBar_X.setEnabled(false);
+            seekBar_Y.setEnabled(false);
+        }
+        SeekBar.OnSeekBarChangeListener onSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                if (imageView == null || params == null) return;
+                switch (seekBar.getId()) {
+                    case R.id.seekBar_w:
+                        params.width = i;
+                        break;
+                    case R.id.seekBar_h:
+                        params.height = i;
+                        break;
+                    case R.id.seekBar_x:
+                        params.x = i;
+                        break;
+                    case R.id.seekBar_y:
+                        params.y = i;
+                        break;
+                }
+                windowManager.updateViewLayout(imageView, params);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        };
+        seekBar_W.setOnSeekBarChangeListener(onSeekBarChangeListener);
+        seekBar_H.setOnSeekBarChangeListener(onSeekBarChangeListener);
+        seekBar_X.setOnSeekBarChangeListener(onSeekBarChangeListener);
+        seekBar_Y.setOnSeekBarChangeListener(onSeekBarChangeListener);
+        AlertDialog dialog = new AlertDialog.Builder(context).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                if (imageView != null && params != null) {
+                    width = params.width;
+                    height = params.height;
+                    px = params.x;
+                    py = params.y;
+                    sharedPreferences.edit().putInt(WIDTH, width).putInt(HEIGHT, height).putInt(POSITION_X, px).putInt(POSITION_Y, py).apply();
+                    imageView.setBackgroundColor(0x00000000);
+                }
+                seekBar_W = null;
+                seekBar_H = null;
+                seekBar_X = null;
+                seekBar_Y = null;
+            }
+        }).create();
+        Window win = dialog.getWindow();
+        win.setBackgroundDrawableResource(R.drawable.dialogbackground);
+        win.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+        win.setDimAmount(0);
+        dialog.show();
+        WindowManager.LayoutParams win_params = win.getAttributes();
+        if (metrics.heightPixels > metrics.widthPixels) {
+            win_params.width = (metrics.widthPixels / 6) * 5;
+            win_params.height = metrics.heightPixels / 2;
+        } else {
+            win_params.width = (metrics.heightPixels / 6) * 5;
+            win_params.height = metrics.widthPixels / 2;
+        }
+        win.setAttributes(win_params);
+        if (imageView != null)
+            imageView.setBackgroundColor(0xffff0000);
+    }
 }

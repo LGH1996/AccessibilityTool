@@ -95,7 +95,7 @@
                 android:layout_marginBottom="10dp"
                 android:layout_weight="1"
                 android:checked="true"
-                android:hint="双击顶角锁屏"
+                android:hint="双击屏幕锁屏"
                 android:textColorHint="@color/textColor" />
 
             <ImageView

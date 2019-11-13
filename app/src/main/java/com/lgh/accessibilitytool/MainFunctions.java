@@ -96,7 +96,7 @@ public class MainFunctions {
     private boolean double_press;
     private boolean is_release_up, is_release_down;
     private boolean control_lightness, control_lock;
-    private boolean is_state_change_a;
+    private boolean is_state_change_a, is_state_change_b, is_state_change_c;
     private long star_up, star_down;
     private int win_state_count, vibration_strength;
     public Handler handler;
@@ -121,7 +121,6 @@ public class MainFunctions {
     private MyInstallReceiver installReceiver;
     private MyScreenOffReceiver screenOnReceiver;
     private Set<WidgetButtonDescribe> widgetSet;
-    private SkipPositionDescribe skipPositionDescribe;
     private WindowManager.LayoutParams aParams, bParams, cParams;
     private View adv_view, layout_win;
     private ImageView target_xy;
@@ -136,6 +135,8 @@ public class MainFunctions {
             is_release_down = true;
             double_press = false;
             is_state_change_a = false;
+            is_state_change_b = false;
+            is_state_change_c = false;
             cur_pac = "Initialize PackageName";
             cur_act = "Initialize ClassName";
             packageName = service.getPackageName();
@@ -248,24 +249,29 @@ public class MainFunctions {
                     String pacName = temPac.toString();
                     if (!pacName.equals(cur_pac)) {
                         if (pac_launch.contains(pacName)) {
+                            cur_pac = pacName;
                             future_a.cancel(false);
                             asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                             service.setServiceInfo(asi);
                             is_state_change_a = true;
+                            is_state_change_b = true;
+                            is_state_change_c = true;
                             win_state_count = 0;
-                            cur_pac = pacName;
+                            widgetSet = null;
                             future_a = executorService.schedule(new Runnable() {
                                 @Override
                                 public void run() {
                                     asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                                     service.setServiceInfo(asi);
-                                    widgetSet = null;
                                     is_state_change_a = false;
+                                    is_state_change_b = false;
+                                    is_state_change_c = false;
+                                    widgetSet = null;
                                 }
                             }, 8000, TimeUnit.MILLISECONDS);
                         } else if (pac_white.contains(pacName)) {
                             cur_pac = pacName;
-                            if (is_state_change_a) {
+                            if (is_state_change_a || is_state_change_b || is_state_change_c) {
                                 closeContentChanged();
                             }
                         }
@@ -273,11 +279,10 @@ public class MainFunctions {
                     CharSequence temClass = event.getClassName();
                     if (temClass != null) {
                         String actName = temClass.toString();
-                        if (!actName.startsWith("android.widget.")) {
+                        if (!actName.startsWith("android.widget.") && !actName.startsWith("android.view.")) {
                             cur_act = actName;
                             if (is_state_change_a) {
-                                widgetSet = act_widget.get(actName);
-                                skipPositionDescribe = act_position.get(actName);
+                                final SkipPositionDescribe skipPositionDescribe = act_position.get(actName);
                                 if (skipPositionDescribe != null) {
                                     closeContentChanged();
                                     executorService.scheduleAtFixedRate(new Runnable() {
@@ -285,39 +290,45 @@ public class MainFunctions {
 
                                         @Override
                                         public void run() {
-                                            if (skipPositionDescribe != null && num < skipPositionDescribe.number && cur_act.equals(skipPositionDescribe.activityName)) {
+                                            if (num < skipPositionDescribe.number && cur_act.equals(skipPositionDescribe.activityName)) {
                                                 click(skipPositionDescribe.x, skipPositionDescribe.y, 0, 20);
                                                 num++;
                                             } else {
-                                                skipPositionDescribe = null;
                                                 throw new RuntimeException();
                                             }
                                         }
                                     }, skipPositionDescribe.delay, skipPositionDescribe.period, TimeUnit.MILLISECONDS);
                                 }
                             }
+                            if (is_state_change_b) {
+                                widgetSet = act_widget.get(actName);
+                            }
                         }
                     }
-                    if (is_state_change_a && pacName.equals(cur_pac)) {
-                        AccessibilityNodeInfo root = service.getRootInActiveWindow();
-                        findSkipButtonByText(root);
-                        if (widgetSet != null) {
-                            findSkipButtonByWidget(root, widgetSet);
-                        }
+                    if (!pacName.equals(cur_pac)) {
+                        break;
+                    }
+                    if (is_state_change_b && widgetSet != null) {
+                        findSkipButtonByWidget(service.getRootInActiveWindow(), widgetSet);
+                    }
+                    if (is_state_change_c) {
+                        findSkipButtonByText(service.getRootInActiveWindow());
                     }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
-                    if (is_state_change_a && !event.getPackageName().equals("com.android.systemui")) {
-                        AccessibilityNodeInfo source = event.getSource();
-                        findSkipButtonByText(source);
-                        if (widgetSet != null) {
-                            findSkipButtonByWidget(source, widgetSet);
-                        }
-                        if (win_state_count >= 100) {
-                            closeContentChanged();
-                        }
-                        win_state_count++;
+                    if (event.getPackageName().equals("com.android.systemui")) {
+                        break;
                     }
+                    if (is_state_change_b && widgetSet != null) {
+                        findSkipButtonByWidget(event.getSource(), widgetSet);
+                    }
+                    if (is_state_change_c) {
+                        findSkipButtonByText(event.getSource());
+                    }
+                    if (win_state_count >= 100) {
+                        closeContentChanged();
+                    }
+                    win_state_count++;
                     break;
                 case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
                     if (event.getParcelableData() instanceof Notification && pac_msg.contains(event.getPackageName())) {
@@ -491,12 +502,14 @@ public class MainFunctions {
                             click(rect.centerX(), rect.centerY(), 0, 20);
                         }
                     }
+                    e.recycle();
                 }
-                closeContentChanged();
+                is_state_change_c = false;
                 return;
             }
 
         }
+        nodeInfo.recycle();
     }
 
     /**
@@ -535,13 +548,15 @@ public class MainFunctions {
                                 click(temRect.centerX(), temRect.centerY(), 0, 20);
                             }
                         }
-                        closeContentChanged();
+                        is_state_change_b = false;
+                        widgetSet = null;
                         return;
                     }
                 }
                 for (int n = 0; n < node.getChildCount(); n++) {
                     listB.add(node.getChild(n));
                 }
+                node.recycle();
             }
             if (a == b) {
                 a = 0;
@@ -593,8 +608,10 @@ public class MainFunctions {
     private void closeContentChanged() {
         asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
         service.setServiceInfo(asi);
-        widgetSet = null;
         is_state_change_a = false;
+        is_state_change_b = false;
+        is_state_change_c = false;
+        widgetSet = null;
         future_a.cancel(false);
     }
 
@@ -735,8 +752,8 @@ public class MainFunctions {
                             } else if (Integer.valueOf(sDelay) < 0 || Integer.valueOf(sDelay) > 2000) {
                                 modify.setText("点击延迟为0~2000(ms)之间");
                                 return;
-                            } else if (Integer.valueOf(sPeriod) < 100 || Integer.valueOf(sPeriod) > 1000) {
-                                modify.setText("点击间隔应为100~1000(ms)之间");
+                            } else if (Integer.valueOf(sPeriod) < 100 || Integer.valueOf(sPeriod) > 2000) {
+                                modify.setText("点击间隔应为100~2000(ms)之间");
                                 return;
                             } else if (Integer.valueOf(sNumber) < 1 || Integer.valueOf(sNumber) > 20) {
                                 modify.setText("点击次数应为1~20次之间");
@@ -1152,8 +1169,7 @@ public class MainFunctions {
                             @Override
                             public void onClick(View v) {
                                 Gson gson = new Gson();
-                                sharedPreferences.edit().putString(ACTIVITY_WIDGET, gson.toJson(act_widget)).apply();
-                                sharedPreferences.edit().putString(ACTIVITY_POSITION, gson.toJson(act_position)).apply();
+                                sharedPreferences.edit().putString(ACTIVITY_POSITION, gson.toJson(act_position)).putString(ACTIVITY_WIDGET, gson.toJson(act_widget)).apply();
                                 windowManager.removeViewImmediate(layout_win);
                                 windowManager.removeViewImmediate(adv_view);
                                 windowManager.removeViewImmediate(target_xy);
@@ -1239,8 +1255,7 @@ public class MainFunctions {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
                         Gson gson = new Gson();
-                        sharedPreferences.edit().putString(ACTIVITY_WIDGET, gson.toJson(act_widget)).apply();
-                        sharedPreferences.edit().putString(ACTIVITY_POSITION, gson.toJson(act_position)).apply();
+                        sharedPreferences.edit().putString(ACTIVITY_POSITION, gson.toJson(act_position)).putString(ACTIVITY_WIDGET, gson.toJson(act_widget)).apply();
                     }
                 });
                 Window win = dialog_adv.getWindow();
@@ -1288,9 +1303,7 @@ public class MainFunctions {
                 AlertDialog dialog_vol = new AlertDialog.Builder(service).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.putInt(VIBRATION_STRENGTH, vibration_strength).apply();
-                        editor.putBoolean(SUPPORT_SYSTEM_MUSIC, mediaButtonControl.support_SysMusic).apply();
+                        sharedPreferences.edit().putInt(VIBRATION_STRENGTH, vibration_strength).putBoolean(SUPPORT_SYSTEM_MUSIC, mediaButtonControl.support_SysMusic).apply();
                     }
                 }).create();
                 Window win = dialog_vol.getWindow();
@@ -1469,6 +1482,14 @@ public class MainFunctions {
                 return true;
             }
         });
+        switch_screen_lock.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                screenLock.showSetAreaDialog();
+                dialog_main.dismiss();
+                return true;
+            }
+        });
         switch_screen_lock.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -1481,7 +1502,6 @@ public class MainFunctions {
                 }
             }
         });
-
         bt_set.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
