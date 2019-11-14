@@ -30,10 +30,7 @@ public class ScreenLock {
     private DisplayMetrics metrics;
     private ImageView imageView;
     private WindowManager.LayoutParams params;
-    private SeekBar seekBar_W;
-    private SeekBar seekBar_H;
-    private SeekBar seekBar_X;
-    private SeekBar seekBar_Y;
+    private View view;
 
     public ScreenLock(Context context) {
         this.context = context;
@@ -93,20 +90,20 @@ public class ScreenLock {
             imageView = null;
             params = null;
         }
-        if (seekBar_W != null && seekBar_H != null && seekBar_X != null && seekBar_Y != null) {
-            seekBar_W.setEnabled(false);
-            seekBar_H.setEnabled(false);
-            seekBar_X.setEnabled(false);
-            seekBar_Y.setEnabled(false);
+        if (view != null) {
+            view.findViewById(R.id.seekBar_w).setEnabled(false);
+            view.findViewById(R.id.seekBar_h).setEnabled(false);
+            view.findViewById(R.id.seekBar_x).setEnabled(false);
+            view.findViewById(R.id.seekBar_y).setEnabled(false);
         }
     }
 
     public void showSetAreaDialog() {
-        View view = LayoutInflater.from(context).inflate(R.layout.screen_lock_position, null);
-        seekBar_W = view.findViewById(R.id.seekBar_w);
-        seekBar_H = view.findViewById(R.id.seekBar_h);
-        seekBar_X = view.findViewById(R.id.seekBar_x);
-        seekBar_Y = view.findViewById(R.id.seekBar_y);
+        view = LayoutInflater.from(context).inflate(R.layout.screen_lock_position, null);
+        SeekBar seekBar_W = view.findViewById(R.id.seekBar_w);
+        SeekBar seekBar_H = view.findViewById(R.id.seekBar_h);
+        SeekBar seekBar_X = view.findViewById(R.id.seekBar_x);
+        SeekBar seekBar_Y = view.findViewById(R.id.seekBar_y);
         seekBar_W.setMax(metrics.widthPixels / 4);
         seekBar_H.setMax(metrics.heightPixels / 4);
         seekBar_X.setMax(metrics.widthPixels);
@@ -165,10 +162,7 @@ public class ScreenLock {
                     sharedPreferences.edit().putInt(WIDTH, width).putInt(HEIGHT, height).putInt(POSITION_X, px).putInt(POSITION_Y, py).apply();
                     imageView.setBackgroundColor(0x00000000);
                 }
-                seekBar_W = null;
-                seekBar_H = null;
-                seekBar_X = null;
-                seekBar_Y = null;
+                view = null;
             }
         }).create();
         Window win = dialog.getWindow();
