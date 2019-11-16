@@ -84,8 +84,10 @@ public class MainFunctions {
     private static final String TAG = "MyAccessibilityService";
     private static final String CONTROL_LIGHTNESS = "control_lightness";
     private static final String CONTROL_LOCK = "control_lock";
-    private static final String EVENT_TYPES = "event_type";
-    private static final String FLAGS = "flags";
+    private static final String SKIP_ADVERTISING = "skip_advertising";
+    private static final String RECORD_MESSAGE = "record_message";
+    private static final String CONTROL_MUSIC = "control_music";
+    private static final String CONTROL_MUSIC_ONLY_LOCK = "control_music_unlock";
     private static final String PAC_MSG = "pac_msg";
     private static final String VIBRATION_STRENGTH = "vibration_strength";
     private static final String SUPPORT_SYSTEM_MUSIC = "support_system_music";
@@ -95,7 +97,9 @@ public class MainFunctions {
     private static final String KEY_WORD_LIST = "keyWordList";
     private boolean double_press;
     private boolean is_release_up, is_release_down;
+    private boolean skip_advertising, record_message;
     private boolean control_lightness, control_lock;
+    private boolean control_music, control_music_only_lock;
     private boolean is_state_change_a, is_state_change_b, is_state_change_c;
     private long star_up, star_down;
     private int win_state_count, vibration_strength;
@@ -134,9 +138,6 @@ public class MainFunctions {
             is_release_up = true;
             is_release_down = true;
             double_press = false;
-            is_state_change_a = false;
-            is_state_change_b = false;
-            is_state_change_c = false;
             cur_pac = "Initialize PackageName";
             cur_act = "Initialize ClassName";
             packageName = service.getPackageName();
@@ -146,6 +147,7 @@ public class MainFunctions {
             windowManager = (WindowManager) service.getSystemService(AccessibilityService.WINDOW_SERVICE);
             devicePolicyManager = (DevicePolicyManager) service.getSystemService(AccessibilityService.DEVICE_POLICY_SERVICE);
             packageManager = service.getPackageManager();
+            asi = service.getServiceInfo();
             executorService = Executors.newSingleThreadScheduledExecutor();
             mediaButtonControl = new MediaButtonControl(service);
             screenLightness = new ScreenLightness(service);
@@ -155,15 +157,13 @@ public class MainFunctions {
             vibration_strength = sharedPreferences.getInt(VIBRATION_STRENGTH, 50);
             pac_msg = sharedPreferences.getStringSet(PAC_MSG, new HashSet<String>());
             pac_white = sharedPreferences.getStringSet(PAC_WHITE, null);
-            control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(service, MyDeviceAdminReceiver.class)));
+            skip_advertising = sharedPreferences.getBoolean(SKIP_ADVERTISING, true);
+            control_music = sharedPreferences.getBoolean(CONTROL_MUSIC, true);
+            record_message = sharedPreferences.getBoolean(RECORD_MESSAGE, false);
             control_lightness = sharedPreferences.getBoolean(CONTROL_LIGHTNESS, false);
+            control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(service, MyDeviceAdminReceiver.class)));
+            control_music_only_lock = sharedPreferences.getBoolean(CONTROL_MUSIC_ONLY_LOCK, false);
             mediaButtonControl.support_SysMusic = sharedPreferences.getBoolean(SUPPORT_SYSTEM_MUSIC, false);
-            if (control_lock) screenLock.showLockFloat();
-            if (control_lightness) screenLightness.showFloat();
-            asi = service.getServiceInfo();
-            asi.eventTypes = sharedPreferences.getInt(EVENT_TYPES, AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
-            asi.flags = sharedPreferences.getInt(FLAGS, asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
-            service.setServiceInfo(asi);
             updatePackage();
             IntentFilter filter_install = new IntentFilter();
             filter_install.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -171,11 +171,30 @@ public class MainFunctions {
             filter_install.addDataScheme("package");
             service.registerReceiver(installReceiver, filter_install);
             IntentFilter filter_screen = new IntentFilter();
+            filter_screen.addAction(Intent.ACTION_SCREEN_ON);
             filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
             service.registerReceiver(screenOnReceiver, filter_screen);
             File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-            if (!file.exists()) file.mkdirs();
+            if (!file.exists()) {
+                file.mkdirs();
+            }
             savePath = file.getAbsolutePath();
+            if (skip_advertising) {
+                asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+            }
+            if (control_music && !control_music_only_lock) {
+                asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+            }
+            if (record_message) {
+                asi.eventTypes |= AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
+            }
+            if (control_lightness) {
+                screenLightness.showFloat();
+            }
+            if (control_lock) {
+                screenLock.showLockFloat();
+            }
+            service.setServiceInfo(asi);
             String aJson = sharedPreferences.getString(ACTIVITY_WIDGET, null);
             if (aJson != null) {
                 Type type = new TypeToken<HashMap<String, Set<WidgetButtonDescribe>>>() {
@@ -224,10 +243,20 @@ public class MainFunctions {
                             break;
                         case 0x03:
                             cur_pac = "ScreenOff PackageName";
+                            if (control_music && control_music_only_lock) {
+                                asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+                                service.setServiceInfo(asi);
+                            }
                             break;
                         case 0x04:
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                                 service.disableSelf();
+                            }
+                            break;
+                        case 0x05:
+                            if (control_music && control_music_only_lock) {
+                                asi.flags &= ~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+                                service.setServiceInfo(asi);
                             }
                             break;
                     }
@@ -684,7 +713,7 @@ public class MainFunctions {
         TextView bt_cancel = view_main.findViewById(R.id.cancel);
         TextView bt_sure = view_main.findViewById(R.id.sure);
         switch_skip_advertising.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
-        switch_volume_control.setChecked((asi.flags & AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) == AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS);
+        switch_volume_control.setChecked(control_music);
         switch_record_message.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
         switch_screen_lightness.setChecked(control_lightness);
         switch_screen_lock.setChecked(control_lock && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(componentName)));
@@ -1275,10 +1304,12 @@ public class MainFunctions {
         switch_volume_control.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                View view = inflater.inflate(R.layout.vibration_strength, null);
+                View view = inflater.inflate(R.layout.control_music_set, null);
                 SeekBar seekBar = view.findViewById(R.id.strength);
+                CheckBox checkLock = view.findViewById(R.id.check_lock);
                 CheckBox checkSys = view.findViewById(R.id.check_sys);
                 seekBar.setProgress(vibration_strength);
+                checkLock.setChecked(control_music_only_lock);
                 checkSys.setChecked(mediaButtonControl.support_SysMusic);
                 seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                     @Override
@@ -1294,16 +1325,31 @@ public class MainFunctions {
                     public void onStopTrackingTouch(SeekBar seekBar) {
                     }
                 });
-                checkSys.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                CompoundButton.OnCheckedChangeListener onCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
                     @Override
                     public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                        mediaButtonControl.support_SysMusic = b;
+                        switch (compoundButton.getId()) {
+                            case R.id.check_lock:
+                                control_music_only_lock = b;
+                                break;
+                            case R.id.check_sys:
+                                mediaButtonControl.support_SysMusic = b;
+                                break;
+                        }
                     }
-                });
+                };
+                checkLock.setOnCheckedChangeListener(onCheckedChangeListener);
+                checkSys.setOnCheckedChangeListener(onCheckedChangeListener);
                 AlertDialog dialog_vol = new AlertDialog.Builder(service).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                        sharedPreferences.edit().putInt(VIBRATION_STRENGTH, vibration_strength).putBoolean(SUPPORT_SYSTEM_MUSIC, mediaButtonControl.support_SysMusic).apply();
+                        if (control_music_only_lock) {
+                            asi.flags &= ~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+                        } else if (control_music) {
+                            asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+                        }
+                        service.setServiceInfo(asi);
+                        sharedPreferences.edit().putInt(VIBRATION_STRENGTH, vibration_strength).putBoolean(CONTROL_MUSIC_ONLY_LOCK, control_music_only_lock).putBoolean(SUPPORT_SYSTEM_MUSIC, mediaButtonControl.support_SysMusic).apply();
                     }
                 }).create();
                 Window win = dialog_vol.getWindow();
@@ -1529,58 +1575,56 @@ public class MainFunctions {
         bt_sure.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SharedPreferences.Editor editor = sharedPreferences.edit();
                 if (switch_skip_advertising.isChecked()) {
                     asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
-                    editor.putInt(EVENT_TYPES, asi.eventTypes | AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply();
+                    skip_advertising = true;
 
                 } else {
                     asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
-                    editor.putInt(EVENT_TYPES, asi.eventTypes & (~AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)).apply();
+                    skip_advertising = false;
                 }
                 if (switch_volume_control.isChecked()) {
-                    asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
-                    editor.putInt(FLAGS, asi.flags | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS).apply();
+                    if (!control_music_only_lock) {
+                        asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+                    }
+                    control_music = true;
                 } else {
                     asi.flags &= ~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
-                    editor.putInt(FLAGS, asi.flags & (~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS)).apply();
+                    control_music = false;
                 }
                 if (switch_record_message.isChecked()) {
                     asi.eventTypes |= AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
-                    editor.putInt(EVENT_TYPES, asi.eventTypes | AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED).apply();
-
+                    record_message = true;
                 } else {
                     asi.eventTypes &= ~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
-                    editor.putInt(EVENT_TYPES, asi.eventTypes & (~AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED)).apply();
+                    record_message = false;
                 }
                 if (switch_screen_lightness.isChecked()) {
                     if (!control_lightness) {
                         screenLightness.showFloat();
                         control_lightness = true;
-                        editor.putBoolean(CONTROL_LIGHTNESS, true).apply();
                     }
                 } else {
                     if (control_lightness) {
                         screenLightness.dismiss();
                         control_lightness = false;
-                        editor.putBoolean(CONTROL_LIGHTNESS, false).apply();
                     }
                 }
                 if (switch_screen_lock.isChecked()) {
                     if (!control_lock) {
                         screenLock.showLockFloat();
                         control_lock = true;
-                        editor.putBoolean(CONTROL_LOCK, true).apply();
                     }
                 } else {
                     if (control_lock) {
                         screenLock.dismiss();
                         control_lock = false;
-                        editor.putBoolean(CONTROL_LOCK, false).apply();
                     }
                 }
                 service.setServiceInfo(asi);
+                sharedPreferences.edit().putBoolean(SKIP_ADVERTISING, skip_advertising).putBoolean(CONTROL_MUSIC, control_music).putBoolean(RECORD_MESSAGE, record_message).putBoolean(CONTROL_LIGHTNESS, control_lightness).putBoolean(CONTROL_LOCK, control_lock).apply();
                 dialog_main.dismiss();
+
             }
         });
         Window win = dialog_main.getWindow();
