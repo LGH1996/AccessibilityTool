@@ -48,7 +48,7 @@ public class MainActivity extends Activity {
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
                 requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-                Toast.makeText(context, "请授予＜读写手机存储＞权限，,并设置允许后台运行", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "请授予读写手机存储权限，,并设置允许后台运行", Toast.LENGTH_SHORT).show();
             }
 
             if (!((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName())) {
