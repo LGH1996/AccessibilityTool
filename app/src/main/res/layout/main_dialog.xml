@@ -40,7 +40,7 @@
                 android:src="@color/divideLine" />
 
             <Switch
-                android:id="@+id/volume_control"
+                android:id="@+id/music_control"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_marginTop="10dp"

@@ -704,7 +704,7 @@ public class MainFunctions {
         final View view_main = inflater.inflate(R.layout.main_dialog, null);
         final AlertDialog dialog_main = new AlertDialog.Builder(service).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_main).create();
         final Switch switch_skip_advertising = view_main.findViewById(R.id.skip_advertising);
-        final Switch switch_volume_control = view_main.findViewById(R.id.volume_control);
+        final Switch switch_music_control = view_main.findViewById(R.id.music_control);
         final Switch switch_record_message = view_main.findViewById(R.id.record_message);
         final Switch switch_screen_lightness = view_main.findViewById(R.id.screen_lightness);
         final Switch switch_screen_lock = view_main.findViewById(R.id.screen_lock);
@@ -712,9 +712,9 @@ public class MainFunctions {
         TextView bt_look = view_main.findViewById(R.id.look);
         TextView bt_cancel = view_main.findViewById(R.id.cancel);
         TextView bt_sure = view_main.findViewById(R.id.sure);
-        switch_skip_advertising.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
-        switch_volume_control.setChecked(control_music);
-        switch_record_message.setChecked((asi.eventTypes & AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
+        switch_skip_advertising.setChecked(skip_advertising);
+        switch_music_control.setChecked(control_music);
+        switch_record_message.setChecked(record_message);
         switch_screen_lightness.setChecked(control_lightness);
         switch_screen_lock.setChecked(control_lock && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(componentName)));
 
@@ -1301,7 +1301,7 @@ public class MainFunctions {
             }
         });
 
-        switch_volume_control.setOnLongClickListener(new View.OnLongClickListener() {
+        switch_music_control.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
                 View view = inflater.inflate(R.layout.control_music_set, null);
@@ -1583,7 +1583,7 @@ public class MainFunctions {
                     asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
                     skip_advertising = false;
                 }
-                if (switch_volume_control.isChecked()) {
+                if (switch_music_control.isChecked()) {
                     if (!control_music_only_lock) {
                         asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
                     }
