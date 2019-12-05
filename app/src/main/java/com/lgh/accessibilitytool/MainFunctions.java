@@ -106,7 +106,7 @@ public class MainFunctions {
     public Handler handler;
     private AccessibilityService service;
     private SharedPreferences sharedPreferences;
-    private ScheduledFuture future_v, future_a;
+    private ScheduledFuture future_v, future_a, future_b;
     private ScheduledExecutorService executorService;
     private AudioManager audioManager;
     private PackageManager packageManager;
@@ -220,7 +220,7 @@ public class MainFunctions {
                 keyWordList = new ArrayList<>();
                 keyWordList.add("跳过");
             }
-            future_v = future_a = executorService.schedule(new Runnable() {
+            future_v = future_a = future_b = executorService.schedule(new Runnable() {
                 @Override
                 public void run() {
                 }
@@ -280,6 +280,7 @@ public class MainFunctions {
                         if (pac_launch.contains(pacName)) {
                             cur_pac = pacName;
                             future_a.cancel(false);
+                            future_b.cancel(false);
                             asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
                             service.setServiceInfo(asi);
                             is_state_change_a = true;
@@ -290,14 +291,19 @@ public class MainFunctions {
                             future_a = executorService.schedule(new Runnable() {
                                 @Override
                                 public void run() {
-                                    asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                                    service.setServiceInfo(asi);
                                     is_state_change_a = false;
-                                    is_state_change_b = false;
                                     is_state_change_c = false;
-                                    widgetSet = null;
                                 }
                             }, 8000, TimeUnit.MILLISECONDS);
+                            future_b = executorService.schedule(new Runnable() {
+                                @Override
+                                public void run() {
+                                    asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+                                    service.setServiceInfo(asi);
+                                    is_state_change_b = false;
+                                    widgetSet = null;
+                                }
+                            }, 16000, TimeUnit.MILLISECONDS);
                         } else if (pac_white.contains(pacName)) {
                             cur_pac = pacName;
                             if (is_state_change_a || is_state_change_b || is_state_change_c) {
@@ -313,7 +319,9 @@ public class MainFunctions {
                             if (is_state_change_a) {
                                 final SkipPositionDescribe skipPositionDescribe = act_position.get(actName);
                                 if (skipPositionDescribe != null) {
-                                    closeContentChanged();
+                                    is_state_change_a = false;
+                                    is_state_change_c = false;
+                                    future_a.cancel(false);
                                     executorService.scheduleAtFixedRate(new Runnable() {
                                         int num = 0;
 
@@ -577,7 +585,6 @@ public class MainFunctions {
                                 click(temRect.centerX(), temRect.centerY(), 0, 20);
                             }
                         }
-                        is_state_change_b = false;
                         widgetSet = null;
                         return;
                     }
@@ -642,6 +649,7 @@ public class MainFunctions {
         is_state_change_c = false;
         widgetSet = null;
         future_a.cancel(false);
+        future_b.cancel(false);
     }
 
     /**
@@ -1541,7 +1549,6 @@ public class MainFunctions {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked && !devicePolicyManager.isAdminActive(componentName) && (Build.VERSION.SDK_INT < Build.VERSION_CODES.P)) {
                     Intent intent = new Intent().setComponent(new ComponentName("com.android.settings", "com.android.settings.DeviceAdminSettings"));
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     service.startActivity(intent);
                     control_lock = false;
                     dialog_main.dismiss();
@@ -1552,7 +1559,6 @@ public class MainFunctions {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName));
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 service.startActivity(intent);
                 dialog_main.dismiss();
             }
@@ -1561,7 +1567,6 @@ public class MainFunctions {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(service, HelpActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 service.startActivity(intent);
                 dialog_main.dismiss();
             }
