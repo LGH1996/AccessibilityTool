@@ -31,7 +31,7 @@
                 android:layout_marginBottom="10dp"
                 android:layout_weight="1"
                 android:checked="true"
-                android:hint="跳过启屏广告"
+                android:hint="跳过开屏广告"
                 android:textColorHint="@color/textColor" />
 
             <ImageView

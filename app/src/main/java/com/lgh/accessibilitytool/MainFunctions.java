@@ -710,7 +710,7 @@ public class MainFunctions {
         final int height = b ? metrics.heightPixels : metrics.widthPixels;
         final LayoutInflater inflater = LayoutInflater.from(service);
         final View view_main = inflater.inflate(R.layout.main_dialog, null);
-        final AlertDialog dialog_main = new AlertDialog.Builder(service).setTitle(R.string.app_name).setIcon(R.drawable.a).setCancelable(false).setView(view_main).create();
+        final AlertDialog dialog_main = new AlertDialog.Builder(service).setTitle(R.string.simple_name).setIcon(R.drawable.a).setCancelable(false).setView(view_main).create();
         final Switch switch_skip_advertising = view_main.findViewById(R.id.skip_advertising);
         final Switch switch_music_control = view_main.findViewById(R.id.music_control);
         final Switch switch_record_message = view_main.findViewById(R.id.record_message);
