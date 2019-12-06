@@ -1549,6 +1549,7 @@ public class MainFunctions {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked && !devicePolicyManager.isAdminActive(componentName) && (Build.VERSION.SDK_INT < Build.VERSION_CODES.P)) {
                     Intent intent = new Intent().setComponent(new ComponentName("com.android.settings", "com.android.settings.DeviceAdminSettings"));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     service.startActivity(intent);
                     control_lock = false;
                     dialog_main.dismiss();
@@ -1559,6 +1560,7 @@ public class MainFunctions {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 service.startActivity(intent);
                 dialog_main.dismiss();
             }
@@ -1567,6 +1569,7 @@ public class MainFunctions {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(service, HelpActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 service.startActivity(intent);
                 dialog_main.dismiss();
             }
