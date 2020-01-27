@@ -56,6 +56,7 @@ import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -68,13 +69,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -197,19 +198,19 @@ public class MainFunctions {
             service.setServiceInfo(asi);
             String aJson = sharedPreferences.getString(ACTIVITY_WIDGET, null);
             if (aJson != null) {
-                Type type = new TypeToken<HashMap<String, Set<WidgetButtonDescribe>>>() {
+                Type type = new TypeToken<TreeMap<String, Set<WidgetButtonDescribe>>>() {
                 }.getType();
                 act_widget = new Gson().fromJson(aJson, type);
             } else {
-                act_widget = new HashMap<>();
+                act_widget = new TreeMap<>();
             }
             String bJson = sharedPreferences.getString(ACTIVITY_POSITION, null);
             if (bJson != null) {
-                Type type = new TypeToken<HashMap<String, SkipPositionDescribe>>() {
+                Type type = new TypeToken<TreeMap<String, SkipPositionDescribe>>() {
                 }.getType();
                 act_position = new Gson().fromJson(bJson, type);
             } else {
-                act_position = new HashMap<>();
+                act_position = new TreeMap<>();
             }
             String cJson = sharedPreferences.getString(KEY_WORD_LIST, null);
             if (cJson != null) {
@@ -269,52 +270,52 @@ public class MainFunctions {
     }
 
     public void onAccessibilityEvent(AccessibilityEvent event) {
-//        Log.i(TAG,AccessibilityEvent.eventTypeToString(event.getEventType())+"-"+event.getPackageName()+"-"+event.getClassName());
+//        Log.i(TAG, AccessibilityEvent.eventTypeToString(event.getEventType()) + "-" + event.getPackageName() + "-" + event.getClassName());
         try {
             switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
                     CharSequence temPac = event.getPackageName();
-                    if (temPac == null) break;
-                    String pacName = temPac.toString();
-                    if (!pacName.equals(cur_pac)) {
-                        if (pac_launch.contains(pacName)) {
-                            cur_pac = pacName;
-                            future_a.cancel(false);
-                            future_b.cancel(false);
-                            asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                            service.setServiceInfo(asi);
-                            is_state_change_a = true;
-                            is_state_change_b = true;
-                            is_state_change_c = true;
-                            win_state_count = 0;
-                            widgetSet = null;
-                            future_a = executorService.schedule(new Runnable() {
-                                @Override
-                                public void run() {
-                                    is_state_change_a = false;
-                                    is_state_change_c = false;
+                    CharSequence temClass = event.getClassName();
+                    if (temPac != null && temClass != null) {
+                        String pacName = temPac.toString();
+                        String actName = temClass.toString();
+                        boolean isActivity = !actName.startsWith("android.widget.") && !actName.startsWith("android.view.");
+                        if (!pacName.equals(cur_pac) && isActivity) {
+                            if (pac_launch.contains(pacName)) {
+                                cur_pac = pacName;
+                                future_a.cancel(false);
+                                future_b.cancel(false);
+                                asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+                                service.setServiceInfo(asi);
+                                is_state_change_a = true;
+                                is_state_change_b = true;
+                                is_state_change_c = true;
+                                win_state_count = 0;
+                                widgetSet = null;
+                                future_a = executorService.schedule(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        is_state_change_a = false;
+                                        is_state_change_c = false;
+                                    }
+                                }, 8000, TimeUnit.MILLISECONDS);
+                                future_b = executorService.schedule(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+                                        service.setServiceInfo(asi);
+                                        is_state_change_b = false;
+                                        widgetSet = null;
+                                    }
+                                }, 30000, TimeUnit.MILLISECONDS);
+                            } else if (pac_white.contains(pacName)) {
+                                cur_pac = pacName;
+                                if (is_state_change_a || is_state_change_b || is_state_change_c) {
+                                    closeContentChanged();
                                 }
-                            }, 8000, TimeUnit.MILLISECONDS);
-                            future_b = executorService.schedule(new Runnable() {
-                                @Override
-                                public void run() {
-                                    asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-                                    service.setServiceInfo(asi);
-                                    is_state_change_b = false;
-                                    widgetSet = null;
-                                }
-                            }, 16000, TimeUnit.MILLISECONDS);
-                        } else if (pac_white.contains(pacName)) {
-                            cur_pac = pacName;
-                            if (is_state_change_a || is_state_change_b || is_state_change_c) {
-                                closeContentChanged();
                             }
                         }
-                    }
-                    CharSequence temClass = event.getClassName();
-                    if (temClass != null) {
-                        String actName = temClass.toString();
-                        if (!actName.startsWith("android.widget.") && !actName.startsWith("android.view.")) {
+                        if (isActivity) {
                             cur_act = actName;
                             if (is_state_change_a) {
                                 final SkipPositionDescribe skipPositionDescribe = act_position.get(actName);
@@ -341,15 +342,15 @@ public class MainFunctions {
                                 widgetSet = act_widget.get(actName);
                             }
                         }
-                    }
-                    if (!pacName.equals(cur_pac)) {
-                        break;
-                    }
-                    if (is_state_change_b && widgetSet != null) {
-                        findSkipButtonByWidget(service.getRootInActiveWindow(), widgetSet);
-                    }
-                    if (is_state_change_c) {
-                        findSkipButtonByText(service.getRootInActiveWindow());
+                        if (!pacName.equals(cur_pac)) {
+                            break;
+                        }
+                        if (is_state_change_b && widgetSet != null) {
+                            findSkipButtonByWidget(service.getRootInActiveWindow(), widgetSet);
+                        }
+                        if (is_state_change_c) {
+                            findSkipButtonByText(service.getRootInActiveWindow());
+                        }
                     }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
@@ -362,7 +363,7 @@ public class MainFunctions {
                     if (is_state_change_c) {
                         findSkipButtonByText(event.getSource());
                     }
-                    if (win_state_count >= 100) {
+                    if (win_state_count >= 150) {
                         closeContentChanged();
                     }
                     win_state_count++;
@@ -580,9 +581,13 @@ public class MainFunctions {
                         isFind = true;
                     }
                     if (isFind) {
-                        if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                            if (!node.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                                click(temRect.centerX(), temRect.centerY(), 0, 20);
+                        if (e.onlyClick) {
+                            click(temRect.centerX(), temRect.centerY(), 0, 20);
+                        } else {
+                            if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                                if (!node.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                                    click(temRect.centerX(), temRect.centerY(), 0, 20);
+                                }
                             }
                         }
                         widgetSet = null;
@@ -691,11 +696,12 @@ public class MainFunctions {
         }
         pac_remove.add(packageName);
         pac_remove.add("com.android.systemui");
+        pac_white.removeAll(pac_remove);
         pac_white.addAll(pac_home);
         pac_white.add("com.android.packageinstaller");
-        pac_white.removeAll(pac_remove);
         pac_launch.removeAll(pac_white);
         pac_launch.removeAll(pac_remove);
+
     }
 
     /**
@@ -786,8 +792,8 @@ public class MainFunctions {
                             } else if (Integer.valueOf(sY) < 0 || Integer.valueOf(sY) > metrics.heightPixels) {
                                 modify.setText("Y坐标超出屏幕寸");
                                 return;
-                            } else if (Integer.valueOf(sDelay) < 0 || Integer.valueOf(sDelay) > 2000) {
-                                modify.setText("点击延迟为0~2000(ms)之间");
+                            } else if (Integer.valueOf(sDelay) < 0 || Integer.valueOf(sDelay) > 4000) {
+                                modify.setText("点击延迟为0~4000(ms)之间");
                                 return;
                             } else if (Integer.valueOf(sPeriod) < 100 || Integer.valueOf(sPeriod) > 2000) {
                                 modify.setText("点击间隔应为100~2000(ms)之间");
@@ -821,6 +827,7 @@ public class MainFunctions {
                         final EditText widgetId = childView.findViewById(R.id.widget_id);
                         final EditText widgetDescribe = childView.findViewById(R.id.widget_describe);
                         final EditText widgetText = childView.findViewById(R.id.widget_text);
+                        final Switch onlyClick = childView.findViewById(R.id.widget_onlyClick);
                         final TextView modify = childView.findViewById(R.id.modify);
                         TextView delete = childView.findViewById(R.id.delete);
                         TextView sure = childView.findViewById(R.id.sure);
@@ -836,6 +843,7 @@ public class MainFunctions {
                         widgetId.setText(widget.idName);
                         widgetDescribe.setText(widget.describe);
                         widgetText.setText(widget.text);
+                        onlyClick.setChecked(widget.onlyClick);
                         parentView.addView(childView);
                         delete.setOnClickListener(new View.OnClickListener() {
                             @Override
@@ -853,7 +861,7 @@ public class MainFunctions {
                                 widget.idName = widgetId.getText().toString().trim();
                                 widget.describe = widgetDescribe.getText().toString().trim();
                                 widget.text = widgetText.getText().toString().trim();
-
+                                widget.onlyClick = onlyClick.isChecked();
                                 widgetId.setText(widget.idName);
                                 widgetDescribe.setText(widget.describe);
                                 widgetText.setText(widget.text);
@@ -869,22 +877,22 @@ public class MainFunctions {
                     public void onClick(View v) {
                         View view = inflater.inflate(R.layout.view_select, null);
                         ListView listView = view.findViewById(R.id.listView);
-                        final List<ResolveInfo> list = packageManager.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), PackageManager.MATCH_ALL);
-                        final ArrayList<String> pac_name = new ArrayList<>();
-                        final ArrayList<String> pac_label = new ArrayList<>();
-                        final ArrayList<Drawable> drawables = new ArrayList<>();
-                        for (ResolveInfo e : list) {
-                            ApplicationInfo info = e.activityInfo.applicationInfo;
-                            if (pac_home.contains(info.packageName) || pac_remove.contains(info.packageName))
-                                continue;
-                            pac_name.add(info.packageName);
-                            pac_label.add(packageManager.getApplicationLabel(info).toString());
-                            drawables.add(info.loadIcon(packageManager));
+                        final ArrayList<AppInformation> listApp = new ArrayList<>();
+                        List<String> list = new ArrayList<>();
+                        list.addAll(pac_white);
+                        list.addAll(pac_launch);
+                        list.removeAll(pac_home);
+                        for (String e : list) {
+                            try {
+                                ApplicationInfo info = packageManager.getApplicationInfo(e, PackageManager.GET_META_DATA);
+                                listApp.add(new AppInformation(e, packageManager.getApplicationLabel(info).toString(), packageManager.getApplicationIcon(info)));
+                            } catch (PackageManager.NameNotFoundException nfe) {
+                            }
                         }
                         BaseAdapter baseAdapter = new BaseAdapter() {
                             @Override
                             public int getCount() {
-                                return pac_name.size();
+                                return listApp.size();
                             }
 
                             @Override
@@ -907,9 +915,10 @@ public class MainFunctions {
                                 } else {
                                     holder = (ViewHolder) convertView.getTag();
                                 }
-                                holder.textView.setText(pac_label.get(position));
-                                holder.imageView.setImageDrawable(drawables.get(position));
-                                holder.checkBox.setChecked(pac_white.contains(pac_name.get(position)));
+                                AppInformation tem = listApp.get(position);
+                                holder.textView.setText(tem.applicationName);
+                                holder.imageView.setImageDrawable(tem.applicationIcon);
+                                holder.checkBox.setChecked(pac_white.contains(tem.packageName));
                                 return convertView;
                             }
                         };
@@ -917,7 +926,7 @@ public class MainFunctions {
                             @Override
                             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                                 CheckBox c = ((ViewHolder) view.getTag()).checkBox;
-                                String str = pac_name.get(position);
+                                String str = listApp.get(position).packageName;
                                 if (c.isChecked()) {
                                     pac_white.remove(str);
                                     pac_launch.add(str);
@@ -946,6 +955,18 @@ public class MainFunctions {
                         params.width = (width / 6) * 5;
                         win.setAttributes(params);
                         dialog_adv.dismiss();
+                    }
+
+                    class AppInformation {
+                        String packageName;
+                        String applicationName;
+                        Drawable applicationIcon;
+
+                        public AppInformation(String packageName, String applicationName, Drawable applicationIcon) {
+                            this.packageName = packageName;
+                            this.applicationName = applicationName;
+                            this.applicationIcon = applicationIcon;
+                        }
                     }
 
                     class ViewHolder {
@@ -1007,7 +1028,9 @@ public class MainFunctions {
                         bParams = new WindowManager.LayoutParams();
                         bParams.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
                         bParams.format = PixelFormat.TRANSPARENT;
-                        bParams.gravity = Gravity.FILL;
+                        bParams.gravity = Gravity.START | Gravity.TOP;
+                        bParams.width = metrics.widthPixels;
+                        bParams.height = metrics.heightPixels;
                         bParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
                         bParams.alpha = 0f;
 
@@ -1390,19 +1413,15 @@ public class MainFunctions {
                             View view = inflater.inflate(R.layout.view_select, null);
                             ListView listView = view.findViewById(R.id.listView);
                             final List<ResolveInfo> list = packageManager.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), PackageManager.MATCH_ALL);
-                            final ArrayList<String> pac_name = new ArrayList<>();
-                            final ArrayList<String> pac_label = new ArrayList<>();
-                            final ArrayList<Drawable> drawables = new ArrayList<>();
+                            final ArrayList<AppInformation> listApp = new ArrayList<>();
                             for (ResolveInfo e : list) {
                                 ApplicationInfo info = e.activityInfo.applicationInfo;
-                                pac_name.add(info.packageName);
-                                pac_label.add(packageManager.getApplicationLabel(info).toString());
-                                drawables.add(info.loadIcon(packageManager));
+                                listApp.add(new AppInformation(info.packageName, packageManager.getApplicationLabel(info).toString(), info.loadIcon(packageManager)));
                             }
                             BaseAdapter baseAdapter = new BaseAdapter() {
                                 @Override
                                 public int getCount() {
-                                    return pac_name.size();
+                                    return listApp.size();
                                 }
 
                                 @Override
@@ -1425,9 +1444,10 @@ public class MainFunctions {
                                     } else {
                                         holder = (ViewHolder) convertView.getTag();
                                     }
-                                    holder.textView.setText(pac_label.get(position));
-                                    holder.imageView.setImageDrawable(drawables.get(position));
-                                    holder.checkBox.setChecked(pac_msg.contains(pac_name.get(position)));
+                                    AppInformation tem = listApp.get(position);
+                                    holder.textView.setText(tem.applicationName);
+                                    holder.imageView.setImageDrawable(tem.applicationIcon);
+                                    holder.checkBox.setChecked(pac_msg.contains(tem.packageName));
                                     return convertView;
                                 }
                             };
@@ -1435,11 +1455,12 @@ public class MainFunctions {
                                 @Override
                                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                                     CheckBox c = ((ViewHolder) view.getTag()).checkBox;
+                                    String str = listApp.get(position).packageName;
                                     if (c.isChecked()) {
-                                        pac_msg.remove(pac_name.get(position));
+                                        pac_msg.remove(str);
                                         c.setChecked(false);
                                     } else {
-                                        pac_msg.add(pac_name.get(position));
+                                        pac_msg.add(str);
                                         c.setChecked(true);
                                     }
                                 }
@@ -1461,6 +1482,18 @@ public class MainFunctions {
                             params.width = (width / 6) * 5;
                             win.setAttributes(params);
                             dialog_message.dismiss();
+                        }
+
+                        class AppInformation {
+                            String packageName;
+                            String applicationName;
+                            Drawable applicationIcon;
+
+                            public AppInformation(String packageName, String applicationName, Drawable applicationIcon) {
+                                this.packageName = packageName;
+                                this.applicationName = applicationName;
+                                this.applicationIcon = applicationIcon;
+                            }
                         }
 
                         class ViewHolder {

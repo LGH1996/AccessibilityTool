@@ -20,6 +20,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
+
             Context context = getApplicationContext();
 
             if (MyAccessibilityService.mainFunctions == null && MyAccessibilityServiceNoGesture.mainFunctions == null) {
@@ -49,6 +50,20 @@ public class MainActivity extends Activity {
                 startActivity(intent);
                 requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
                 Toast.makeText(context, "请授予读写手机存储权限，,并设置允许后台运行", Toast.LENGTH_SHORT).show();
+            }
+
+            if (!Settings.canDrawOverlays(context)) {
+                Intent intent_dol = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+                intent_dol.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ResolveInfo resolveInfo = getPackageManager().resolveActivity(intent_dol, PackageManager.MATCH_ALL);
+                if (resolveInfo != null) {
+                    startActivity(intent_dol);
+                } else {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                }
+                Toast.makeText(context, "请授予应用悬浮窗权限,并设置允许后台运行", Toast.LENGTH_SHORT).show();
             }
 
             if (!((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName())) {

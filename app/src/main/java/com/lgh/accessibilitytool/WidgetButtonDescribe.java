@@ -7,7 +7,7 @@ import java.util.Objects;
 public class WidgetButtonDescribe {
     public String packageName, activityName, className, idName, describe, text;
     public Rect bonus;
-    public boolean clickable;
+    public boolean clickable, onlyClick;
 
     public WidgetButtonDescribe() {
         this.packageName = "";
@@ -18,9 +18,10 @@ public class WidgetButtonDescribe {
         this.text = "";
         this.bonus = new Rect();
         this.clickable = false;
+        this.onlyClick = false;
     }
 
-    public WidgetButtonDescribe(String packageName, String activityName, String className, String idName, String describe, String text, Rect bonus, boolean clickable) {
+    public WidgetButtonDescribe(String packageName, String activityName, String className, String idName, String describe, String text, Rect bonus, boolean clickable, boolean onlyClick) {
         this.packageName = packageName;
         this.activityName = activityName;
         this.className = className;
@@ -29,6 +30,7 @@ public class WidgetButtonDescribe {
         this.text = text;
         this.bonus = bonus;
         this.clickable = clickable;
+        this.onlyClick = onlyClick;
     }
 
     public WidgetButtonDescribe(WidgetButtonDescribe widgetDescribe) {
@@ -40,6 +42,7 @@ public class WidgetButtonDescribe {
         this.text = widgetDescribe.text;
         this.bonus = new Rect(widgetDescribe.bonus);
         this.clickable = widgetDescribe.clickable;
+        this.onlyClick = widgetDescribe.onlyClick;
 
     }
 

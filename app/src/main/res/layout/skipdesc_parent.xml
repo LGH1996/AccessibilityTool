@@ -30,7 +30,7 @@
             android:layout_weight="1"
             android:alpha="0.3"
             android:text="设置白名单"
-            android:textColor="@color/textColor"
+            android:textColor="@drawable/text_click_color"
             android:textSize="13sp" />
 
         <Button
@@ -41,7 +41,7 @@
             android:layout_weight="1"
             android:alpha="0.3"
             android:text="添加广告页"
-            android:textColor="@color/textColor"
+            android:textColor="@drawable/text_click_color"
             android:textSize="13sp" />
 
         <Button
@@ -52,7 +52,7 @@
             android:layout_weight="1"
             android:alpha="0.3"
             android:text="添加关键字"
-            android:textColor="@color/textColor"
+            android:textColor="@drawable/text_click_color"
             android:textSize="13sp" />
 
     </LinearLayout>
