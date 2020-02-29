@@ -13,7 +13,9 @@
         android:icon="@drawable/launch"
         android:label="@string/app_name"
         android:persistent="true"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:requestLegacyExternalStorage="true"
+        android:hasFragileUserData="true">
 
         <receiver
             android:name=".MyScreenOffReceiver"
