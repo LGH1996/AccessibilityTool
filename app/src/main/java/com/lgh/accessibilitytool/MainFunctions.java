@@ -181,7 +181,7 @@ public class MainFunctions {
             }
             savePath = file.getAbsolutePath();
             if (skip_advertising) {
-                asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+                asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOWS_CHANGED;
             }
             if (control_music && !control_music_only_lock) {
                 asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
@@ -273,16 +273,21 @@ public class MainFunctions {
 //        Log.i(TAG, AccessibilityEvent.eventTypeToString(event.getEventType()) + "-" + event.getPackageName() + "-" + event.getClassName());
         try {
             switch (event.getEventType()) {
+                case AccessibilityEvent.TYPE_WINDOWS_CHANGED:
+                    AccessibilityNodeInfo node = service.getRootInActiveWindow();
+                    if (node == null || node.getPackageName().equals(cur_pac)) {
+                        break;
+                    }
                 case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
-                    CharSequence temPac = event.getPackageName();
+                    AccessibilityNodeInfo root = service.getRootInActiveWindow();
+                    CharSequence temPackage = event.getPackageName();
                     CharSequence temClass = event.getClassName();
-                    if (temPac != null && temClass != null) {
-                        String pacName = temPac.toString();
-                        String actName = temClass.toString();
-                        boolean isActivity = !actName.startsWith("android.widget.") && !actName.startsWith("android.view.");
-                        if (!pacName.equals(cur_pac) && isActivity) {
-                            if (pac_launch.contains(pacName)) {
-                                cur_pac = pacName;
+                    String packageName = root != null ? root.getPackageName().toString() : temPackage != null ? temPackage.toString() : null;
+                    String activityName = temClass != null ? temClass.toString() : null;
+                    if (packageName != null) {
+                        if (!packageName.equals(cur_pac)) {
+                            if (pac_launch.contains(packageName)) {
+                                cur_pac = packageName;
                                 future_a.cancel(false);
                                 future_b.cancel(false);
                                 asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
@@ -308,17 +313,20 @@ public class MainFunctions {
                                         widgetSet = null;
                                     }
                                 }, 30000, TimeUnit.MILLISECONDS);
-                            } else if (pac_white.contains(pacName)) {
-                                cur_pac = pacName;
+                            } else if (pac_white.contains(packageName)) {
+                                cur_pac = packageName;
                                 if (is_state_change_a || is_state_change_b || is_state_change_c) {
                                     closeContentChanged();
                                 }
                             }
                         }
-                        if (isActivity) {
-                            cur_act = actName;
+
+                    }
+                    if (activityName != null) {
+                        if (!activityName.startsWith("android.widget.") && !activityName.startsWith("android.view.")) {
+                            cur_act = activityName;
                             if (is_state_change_a) {
-                                final SkipPositionDescribe skipPositionDescribe = act_position.get(actName);
+                                final SkipPositionDescribe skipPositionDescribe = act_position.get(activityName);
                                 if (skipPositionDescribe != null) {
                                     is_state_change_a = false;
                                     is_state_change_c = false;
@@ -339,29 +347,27 @@ public class MainFunctions {
                                 }
                             }
                             if (is_state_change_b) {
-                                widgetSet = act_widget.get(actName);
+                                widgetSet = act_widget.get(activityName);
                             }
                         }
-                        if (!pacName.equals(cur_pac)) {
-                            break;
-                        }
+                    }
+                    if (packageName != null && packageName.equals(cur_pac)) {
                         if (is_state_change_b && widgetSet != null) {
-                            findSkipButtonByWidget(service.getRootInActiveWindow(), widgetSet);
+                            findSkipButtonByWidget(root, widgetSet);
                         }
                         if (is_state_change_c) {
-                            findSkipButtonByText(service.getRootInActiveWindow());
+                            findSkipButtonByText(root);
                         }
                     }
                     break;
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
-                    if (event.getPackageName().equals("com.android.systemui")) {
-                        break;
-                    }
-                    if (is_state_change_b && widgetSet != null) {
-                        findSkipButtonByWidget(event.getSource(), widgetSet);
-                    }
-                    if (is_state_change_c) {
-                        findSkipButtonByText(event.getSource());
+                    if (event.getPackageName().equals(cur_pac)) {
+                        if (is_state_change_b && widgetSet != null) {
+                            findSkipButtonByWidget(event.getSource(), widgetSet);
+                        }
+                        if (is_state_change_c) {
+                            findSkipButtonByText(event.getSource());
+                        }
                     }
                     if (win_state_count >= 150) {
                         closeContentChanged();
@@ -1617,11 +1623,11 @@ public class MainFunctions {
             @Override
             public void onClick(View v) {
                 if (switch_skip_advertising.isChecked()) {
-                    asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+                    asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOWS_CHANGED;
                     skip_advertising = true;
 
                 } else {
-                    asi.eventTypes &= ~AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+                    asi.eventTypes &= ~(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOWS_CHANGED);
                     skip_advertising = false;
                 }
                 if (switch_music_control.isChecked()) {
