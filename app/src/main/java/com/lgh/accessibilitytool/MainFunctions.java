@@ -368,11 +368,10 @@ public class MainFunctions {
                         if (is_state_change_c) {
                             findSkipButtonByText(event.getSource());
                         }
+                        if (win_state_count++ >= 150) {
+                            closeContentChanged();
+                        }
                     }
-                    if (win_state_count >= 150) {
-                        closeContentChanged();
-                    }
-                    win_state_count++;
                     break;
                 case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
                     if (event.getParcelableData() instanceof Notification && pac_msg.contains(event.getPackageName())) {
