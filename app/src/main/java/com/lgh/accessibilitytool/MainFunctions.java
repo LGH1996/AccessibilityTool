@@ -89,7 +89,6 @@ public class MainFunctions {
     private static final String CONTROL_MUSIC_ONLY_LOCK = "control_music_unlock";
     private static final String PAC_MSG = "pac_msg";
     private static final String VIBRATION_STRENGTH = "vibration_strength";
-    private static final String SUPPORT_SYSTEM_MUSIC = "support_system_music";
     private static final String ACTIVITY_POSITION = "act_position";
     private static final String ACTIVITY_WIDGET = "act_widget";
     private static final String PAC_WHITE = "pac_white";
@@ -162,7 +161,6 @@ public class MainFunctions {
             control_lightness = sharedPreferences.getBoolean(CONTROL_LIGHTNESS, false);
             control_lock = sharedPreferences.getBoolean(CONTROL_LOCK, true) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P || devicePolicyManager.isAdminActive(new ComponentName(service, MyDeviceAdminReceiver.class)));
             control_music_only_lock = sharedPreferences.getBoolean(CONTROL_MUSIC_ONLY_LOCK, false);
-            mediaButtonControl.support_SysMusic = sharedPreferences.getBoolean(SUPPORT_SYSTEM_MUSIC, false);
             updatePackage();
             IntentFilter filter_install = new IntentFilter();
             filter_install.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -238,7 +236,6 @@ public class MainFunctions {
                             break;
                         case 0x02:
                             updatePackage();
-                            mediaButtonControl.updateMusicSet();
                             break;
                         case 0x03:
                             cur_pac = "ScreenOff PackageName";
@@ -406,10 +403,10 @@ public class MainFunctions {
                                     public void run() {
 //                                        Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_UP -> THREAD");
                                         if (!is_release_down) {
-                                            mediaButtonControl.play_pause_Music();
+                                            mediaButtonControl.sendMediaButton(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
                                             vibrator.vibrate(vibration_strength);
                                         } else if (!is_release_up && audioManager.isMusicActive()) {
-                                            mediaButtonControl.nextMusic();
+                                            mediaButtonControl.sendMediaButton(KeyEvent.KEYCODE_MEDIA_NEXT);
                                             vibrator.vibrate(vibration_strength);
                                         }
                                     }
@@ -441,10 +438,10 @@ public class MainFunctions {
                                     public void run() {
 //                                        Log.i(TAG,"KeyEvent.KEYCODE_VOLUME_DOWN -> THREAD");
                                         if (!is_release_up) {
-                                            mediaButtonControl.play_pause_Music();
+                                            mediaButtonControl.sendMediaButton(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
                                             vibrator.vibrate(vibration_strength);
                                         } else if (!is_release_down && audioManager.isMusicActive()) {
-                                            mediaButtonControl.previousMusic();
+                                            mediaButtonControl.sendMediaButton(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
                                             vibrator.vibrate(vibration_strength);
                                         }
                                     }
@@ -1343,10 +1340,8 @@ public class MainFunctions {
                 View view = inflater.inflate(R.layout.control_music_set, null);
                 SeekBar seekBar = view.findViewById(R.id.strength);
                 CheckBox checkLock = view.findViewById(R.id.check_lock);
-                CheckBox checkSys = view.findViewById(R.id.check_sys);
                 seekBar.setProgress(vibration_strength);
                 checkLock.setChecked(control_music_only_lock);
-                checkSys.setChecked(mediaButtonControl.support_SysMusic);
                 seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                     @Override
                     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -1368,14 +1363,10 @@ public class MainFunctions {
                             case R.id.check_lock:
                                 control_music_only_lock = b;
                                 break;
-                            case R.id.check_sys:
-                                mediaButtonControl.support_SysMusic = b;
-                                break;
                         }
                     }
                 };
                 checkLock.setOnCheckedChangeListener(onCheckedChangeListener);
-                checkSys.setOnCheckedChangeListener(onCheckedChangeListener);
                 AlertDialog dialog_vol = new AlertDialog.Builder(service).setView(view).setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
@@ -1385,7 +1376,7 @@ public class MainFunctions {
                             asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
                         }
                         service.setServiceInfo(asi);
-                        sharedPreferences.edit().putInt(VIBRATION_STRENGTH, vibration_strength).putBoolean(CONTROL_MUSIC_ONLY_LOCK, control_music_only_lock).putBoolean(SUPPORT_SYSTEM_MUSIC, mediaButtonControl.support_SysMusic).apply();
+                        sharedPreferences.edit().putInt(VIBRATION_STRENGTH, vibration_strength).putBoolean(CONTROL_MUSIC_ONLY_LOCK, control_music_only_lock).apply();
                     }
                 }).create();
                 Window win = dialog_vol.getWindow();
