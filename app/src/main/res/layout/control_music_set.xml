@@ -34,17 +34,4 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:hint="添加对系统自带播放器的支持"
-        android:singleLine="true"
-        android:textColorHint="@color/textColor" />
-
-    <CheckBox
-        android:id="@+id/check_sys"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center" />
 </LinearLayout>
