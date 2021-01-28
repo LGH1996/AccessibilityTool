@@ -177,7 +177,7 @@ public class MainFunctions {
             }
             savePath = file.getAbsolutePath();
             if (skip_advertising) {
-                asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOWS_CHANGED;
+                asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
             }
             if (control_music && !control_music_only_lock) {
                 asi.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
@@ -1613,11 +1613,11 @@ public class MainFunctions {
             @Override
             public void onClick(View v) {
                 if (switch_skip_advertising.isChecked()) {
-                    asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOWS_CHANGED;
+                    asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
                     skip_advertising = true;
 
                 } else {
-                    asi.eventTypes &= ~(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOWS_CHANGED);
+                    asi.eventTypes &= ~(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
                     skip_advertising = false;
                 }
                 if (switch_music_control.isChecked()) {
