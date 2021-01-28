@@ -29,7 +29,6 @@ import android.os.Message;
 import android.os.Vibrator;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -56,7 +55,6 @@ import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -273,11 +271,6 @@ public class MainFunctions {
 //        Log.i(TAG, AccessibilityEvent.eventTypeToString(event.getEventType()) + "-" + event.getPackageName() + "-" + event.getClassName());
         try {
             switch (event.getEventType()) {
-                case AccessibilityEvent.TYPE_WINDOWS_CHANGED:
-                    AccessibilityNodeInfo node = service.getRootInActiveWindow();
-                    if (node == null || node.getPackageName().equals(cur_pac)) {
-                        break;
-                    }
                 case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
                     AccessibilityNodeInfo root = service.getRootInActiveWindow();
                     CharSequence temPackage = event.getPackageName();
@@ -618,16 +611,23 @@ public class MainFunctions {
      * 的控件
      */
     private void findAllNode(List<AccessibilityNodeInfo> roots, List<AccessibilityNodeInfo> list) {
-        ArrayList<AccessibilityNodeInfo> temList = new ArrayList<>();
-        for (AccessibilityNodeInfo e : roots) {
-            if (e == null) continue;
-            list.add(e);
-            for (int n = 0; n < e.getChildCount(); n++) {
-                temList.add(e.getChild(n));
+        try {
+            ArrayList<AccessibilityNodeInfo> tem = new ArrayList<>();
+            for (AccessibilityNodeInfo e : roots) {
+                if (e == null) continue;
+                Rect rect = new Rect();
+                e.getBoundsInScreen(rect);
+                if (rect.width() <= 0 || rect.height() <= 0) continue;
+                list.add(e);
+                for (int n = 0; n < e.getChildCount(); n++) {
+                    tem.add(e.getChild(n));
+                }
             }
-        }
-        if (!temList.isEmpty()) {
-            findAllNode(temList, list);
+            if (!tem.isEmpty()) {
+                findAllNode(tem, list);
+            }
+        } catch (Throwable e) {
+//            e.printStackTrace();
         }
     }
 
