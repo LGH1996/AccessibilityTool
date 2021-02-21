@@ -171,11 +171,7 @@ public class MainFunctions {
             filter_screen.addAction(Intent.ACTION_SCREEN_ON);
             filter_screen.addAction(Intent.ACTION_SCREEN_OFF);
             service.registerReceiver(screenOnReceiver, filter_screen);
-            File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-            if (!file.exists()) {
-                file.mkdirs();
-            }
-            savePath = file.getAbsolutePath();
+            savePath = service.getExternalCacheDir().getAbsolutePath();
             if (skip_advertising) {
                 asi.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
             }

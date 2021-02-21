@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
                 requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-                Toast.makeText(context, "请授予读写手机存储权限，,并设置允许后台运行", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "请授予读写手机存储权限，并设置允许后台运行", Toast.LENGTH_SHORT).show();
             }
 
             if (!Settings.canDrawOverlays(context)) {
@@ -63,7 +63,7 @@ public class MainActivity extends Activity {
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(intent);
                 }
-                Toast.makeText(context, "请授予应用悬浮窗权限,并设置允许后台运行", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "请授予应用悬浮窗权限，并设置允许后台运行", Toast.LENGTH_SHORT).show();
             }
 
             if (!((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName())) {
@@ -82,6 +82,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        finishAndRemoveTask();
+        finish();
     }
 }
